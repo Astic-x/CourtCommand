@@ -62,6 +62,7 @@
       <div class="roster-list">
   <% teamAPlayers.forEach((player, i) => { %>
     <div class="roster-card" 
+         data-player-id="<%= player.id %>"
          data-points="<%= player.points || 0 %>"
          data-fouls="<%= player.fouls || 0 %>"
          data-assists="<%= player.assists || 0 %>"
@@ -265,6 +266,7 @@
       <div class="roster-list">
   <% teamBPlayers.forEach((player, i) => { %>
     <div class="roster-card" 
+         data-player-id="<%= player.id %>"
          data-points="<%= player.points || 0 %>"
          data-fouls="<%= player.fouls || 0 %>"
          data-assists="<%= player.assists || 0 %>"
