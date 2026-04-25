@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CourtCommand AI</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+    <h1>CourtCommand AI</h1>
+
+    <form id="form">
+
+        <h3>Home Team</h3>
+        <input id="home_fg" placeholder="FG %" required>
+        <input id="home_ft" placeholder="FT %" required>
+        <input id="home_tp" placeholder="3PT %" required>
+        <input id="home_ast" placeholder="Assists" required>
+        <input id="home_reb" placeholder="Rebounds" required>
+
+        <h3>Away Team</h3>
+        <input id="away_fg" placeholder="FG %" required>
+        <input id="away_ft" placeholder="FT %" required>
+        <input id="away_tp" placeholder="3PT %" required>
+        <input id="away_ast" placeholder="Assists" required>
+        <input id="away_reb" placeholder="Rebounds" required>
+
+        <button>Predict</button>
+    </form>
+
+    <div class="card">
+        <h2>Result</h2>
+        <div id="result">Waiting...</div>
+    </div>
+</div>
+
+<script>
+document.getElementById("form").addEventListener("submit", function(e){
+    e.preventDefault();
+
+    fetch("http://127.0.0.1:5000/predict", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            home_fg: parseFloat(home_fg.value),
+            home_ft: parseFloat(home_ft.value),
+            home_tp: parseFloat(home_tp.value),
+            home_ast: parseFloat(home_ast.value),
+            home_reb: parseFloat(home_reb.value),
+
+            away_fg: parseFloat(away_fg.value),
+            away_ft: parseFloat(away_ft.value),
+            away_tp: parseFloat(away_tp.value),
+            away_ast: parseFloat(away_ast.value),
+            away_reb: parseFloat(away_reb.value)
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        result.innerHTML = `
+            <b>${data.winner}</b><br>
+            Confidence: ${data.confidence}
+        `;
+    })
+    .catch(() => {
+        result.innerHTML = "Error connecting backend";
+    });
+});
+</script>
+
+</body>
+</html>
