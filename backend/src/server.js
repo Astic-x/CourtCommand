@@ -58,9 +58,6 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 
-/* =========================
-   GLOBAL MIDDLEWARE
-========================= */
 app.use(async (req, res, next) => {
   res.locals.user = req.user;
   try {
@@ -84,13 +81,22 @@ app.use(async (req, res, next) => {
   next();
 });
 
-/* =========================
-   ROUTES
-========================= */
+// --- Public Routes ---
 app.get("/", async (req, res) => {
   res.render("pages/index"); // Adjusted to match your specific layout
 });
 
+app.get("/news", (req, res) => {
+  const news = [{
+    _id: "1", title: "Final Match Announced", date: "March 18, 2026", author: "Admin",
+    description: "The final match will be held this Sunday...", image: "/assets/news/match.jpg"
+  }];
+  res.render("pages/news", { news });
+});
+
+
+
+// --- Authentication ---
 app.get("/login", (req, res) => {
   res.render("pages/login");
 });
@@ -100,197 +106,6 @@ app.get("/register", (req, res) => {
 });
 
 
-
-/* =========================
-   ORGANIZER COMMAND CENTER
-========================= */
-app.get("/manage-tournaments", async (req, res) => {
-  if (!req.isAuthenticated()) return res.redirect("/login");
-
-  try {
-    let myTournaments = [];
-
-    if (req.user.is_admin) {
-      // 👑 GLOBAL ADMIN: Fetch EVERY tournament in the database
-      const [allTourneys] = await pool.query("SELECT * FROM tournaments ORDER BY start_date DESC");
-      myTournaments = allTourneys;
-    } else {
-      // 👤 REGULAR USER: Fetch ONLY tournaments they created
-      const [userTourneys] = await pool.query(
-        "SELECT * FROM tournaments WHERE created_by = ? ORDER BY start_date DESC",
-        [req.user.id]
-      );
-      myTournaments = userTourneys;
-    }
-
-    res.render("pages/manage-tournaments", { // Use whatever your organizer EJS file is named
-      user: req.user,
-      myTournaments
-    });
-
-  } catch (err) {
-    console.error("ORGANIZER DASHBOARD ERROR:", err);
-    res.redirect("/");
-  }
-});
-
-/* =========================
-   ADMIN TOURNAMENT HUB (CREATOR ONLY)
-========================= */
-app.get("/manage-tournaments/:id", async (req, res) => {
-  if (!req.isAuthenticated()) return res.redirect("/login");
-  const { id } = req.params;
-
-  try {
-    const [tourn] = await pool.query("SELECT * FROM tournaments WHERE id=?", [id]);
-    if (tourn.length === 0) return res.redirect("/admin");
-
-    // SECURITY LOCK: Only creator or global admin can view this page
-    if (tourn[0].created_by !== req.user.id && !req.user.is_admin) {
-      return res.status(403).send("Unauthorized action.");
-    }
-
-    const [teams] = await pool.query("SELECT * FROM tournament_teams WHERE tournament_id=?", [id]);
-    const [matches] = await pool.query("SELECT * FROM tournament_matches WHERE tournament_id=? ORDER BY id ASC", [id]);
-    const [users] = await pool.query("SELECT id, team FROM users WHERE team IS NOT NULL AND team != 'ADMIN'");
-    const [leaderboard] = await pool.query("SELECT * FROM tournament_teams WHERE tournament_id=? ORDER BY points DESC, wins DESC", [id]);
-
-    res.render("pages/manage-tournament-detail", {
-      user: req.user, tournament: tourn[0], teams, matches, users, leaderboard, isRegistered: false
-    });
-  } catch (err) {
-    console.error("ADMIN TOURNAMENT HUB ERROR:", err);
-    res.redirect("/admin");
-  }
-});
-
-/* =========================
-   EDIT TOURNAMENT SETTINGS (CREATOR ONLY)
-========================= */
-app.post("/tournaments/:id/edit", async (req, res) => {
-  if (!req.isAuthenticated()) return res.redirect("/login");
-  const { id } = req.params;
-  const { name, location, start_date, end_date, max_teams, image } = req.body;
-
-  try {
-    const [tourn] = await pool.query("SELECT created_by FROM tournaments WHERE id=?", [id]);
-    if (tourn[0].created_by !== req.user.id && !req.user.is_admin) {
-      return res.status(403).send("Unauthorized action.");
-    }
-
-    await pool.query(
-      "UPDATE tournaments SET name=?, location=?, start_date=?, end_date=?, max_teams=?, image=? WHERE id=?",
-      [name, location, start_date, end_date, max_teams, image, id]
-    );
-
-    res.redirect(`/manage-tournaments/${id}`);
-  } catch (err) {
-    console.error("EDIT TOURNAMENT ERROR:", err);
-    res.redirect(`/manage-tournaments/${id}`);
-  }
-});
-
-/* =========================
-   EDIT MATCH DATE (CREATOR ONLY)
-========================= */
-app.post("/matches/:id/edit-date", async (req, res) => {
-  if (!req.isAuthenticated()) return res.redirect("/login");
-  const { id } = req.params;
-  const { match_date } = req.body;
-
-  try {
-    const [matchCheck] = await pool.query(`
-      SELECT m.tournament_id, t.created_by 
-      FROM tournament_matches m
-      JOIN tournaments t ON m.tournament_id = t.id
-      WHERE m.id = ?
-    `, [id]);
-
-    if (matchCheck.length === 0) return res.redirect("/admin");
-    if (matchCheck[0].created_by !== req.user.id && !req.user.is_admin) return res.status(403).send("Unauthorized");
-
-    await pool.query("UPDATE tournament_matches SET match_date=? WHERE id=?", [match_date || null, id]);
-    res.redirect(`/manage-tournaments/${matchCheck[0].tournament_id}`);
-  } catch (err) {
-    console.error("EDIT MATCH DATE ERROR:", err);
-    res.redirect("/admin");
-  }
-});
-
-/* =========================
-   LIVE SCORER PANEL (CREATOR ONLY)
-========================= */
-app.get("/score-match/:matchId", async (req, res) => {
-  if (!req.isAuthenticated()) return res.redirect("/login");
-  const { matchId } = req.params;
-
-  try {
-    // 1. Find the tournament this match belongs to
-    const [targetMatch] = await pool.query(`
-      SELECT m.tournament_id, t.created_by 
-      FROM tournament_matches m
-      JOIN tournaments t ON m.tournament_id = t.id
-      WHERE m.id = ?
-    `, [matchId]);
-
-    if (targetMatch.length === 0) return res.redirect("/admin");
-    if (targetMatch[0].created_by !== req.user.id && !req.user.is_admin) return res.status(403).send("Unauthorized");
-
-    const tournamentId = targetMatch[0].tournament_id;
-
-    // 2. Fetch all matches for this tournament to populate the dropdowns
-    const [matches] = await pool.query("SELECT * FROM tournament_matches WHERE tournament_id=? ORDER BY id ASC", [tournamentId]);
-
-    // 3. Render the live score page, passing the specific Match ID that was clicked
-    res.render("pages/live-score", {
-      matches,
-      selectedMatchId: matchId
-    });
-  } catch (err) {
-    console.error("LIVE SCORE ERROR:", err);
-    res.redirect("/admin");
-  }
-});
-
-/* =========================
-   SET MATCH TO LIVE (CREATOR ONLY)
-========================= */
-app.post("/matches/:id/set-live", async (req, res) => {
-  if (!req.isAuthenticated()) return res.redirect("/login");
-  const { id } = req.params;
-
-  try {
-    const [matchCheck] = await pool.query(`
-      SELECT m.tournament_id, t.created_by 
-      FROM tournament_matches m
-      JOIN tournaments t ON m.tournament_id = t.id
-      WHERE m.id = ?
-    `, [id]);
-
-    if (matchCheck.length === 0) return res.redirect("/admin");
-    if (matchCheck[0].created_by !== req.user.id && !req.user.is_admin) {
-      return res.status(403).send("Unauthorized");
-    }
-
-    // Flip the status to LIVE
-    await pool.query("UPDATE tournament_matches SET status='LIVE' WHERE id=?", [id]);
-    
-    res.redirect(`/manage-tournaments/${matchCheck[0].tournament_id}`);
-  } catch (err) {
-    console.error("SET LIVE ERROR:", err);
-    res.redirect("/admin");
-  }
-});
-
-
-
-
-
-
-
-/* =========================
-   AUTH POST ROUTES
-========================= */
 app.post("/register", async (req, res) => {
   const { name, email, team, password, admin_code } = req.body;
 
@@ -326,7 +141,6 @@ app.post("/register", async (req, res) => {
     res.status(500).send("Server Error during registration.");
   }
 });
-
 app.post("/login", passport.authenticate("local", {
   failureRedirect: "/login"
 }), (req, res) => {
@@ -337,14 +151,13 @@ app.post("/login", passport.authenticate("local", {
     return res.redirect("/team-dashboard");
   }
 });
-
 app.get("/logout", (req, res) => {
   req.logout(() => res.redirect("/"));
 });
 
-/* =========================
-   TEAM DASHBOARD
-========================= */
+
+
+// --- Team & Player Management ---
 app.get("/team-dashboard", async (req, res) => {
   if (!req.isAuthenticated()) return res.redirect("/login");
 
@@ -365,7 +178,6 @@ app.get("/team-dashboard", async (req, res) => {
     res.redirect("/");
   }
 });
-
 app.post("/assign-position", async (req, res) => {
   if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
   const { playerId, position } = req.body;
@@ -378,12 +190,10 @@ app.post("/assign-position", async (req, res) => {
     res.status(500).json({ success: false });
   }
 });
-
 app.get("/add-player", (req, res) => {
   if (!req.isAuthenticated()) return res.redirect("/login");
   res.render("pages/add-player");
 });
-
 app.post("/add-player", upload.single("image"), async (req, res) => {
   if (!req.isAuthenticated()) return res.redirect("/login");
   if (!req.file) return res.send("Image upload failed");
@@ -402,7 +212,6 @@ app.post("/add-player", upload.single("image"), async (req, res) => {
     console.log(err);
   }
 });
-
 app.post("/remove-player/:id", async (req, res) => {
   try {
     await pool.query("DELETE FROM players WHERE id=? AND team=?", [req.params.id, req.user.team]);
@@ -412,46 +221,63 @@ app.post("/remove-player/:id", async (req, res) => {
   }
 });
 
-/* =========================
-   LIVE ROUTES
-========================= */
-app.get("/live", async (req, res) => {
+app.post("/team/edit", async (req, res) => {
+  if (!req.isAuthenticated()) return res.redirect("/login");
+  
+  const newTeamName = req.body.team_name.trim();
+  const oldTeamName = req.user.team;
+
+  // Prevent empty names or exact matches
+  if (!newTeamName || newTeamName === oldTeamName) {
+    return res.redirect("/team-dashboard");
+  }
+
   try {
-    let [result] = await pool.query("SELECT id FROM tournament_matches WHERE status='LIVE' LIMIT 1");
-    if (result.length > 0) return res.redirect(`/live/${result[0].id}`);
+    // Prevent hijacking an existing team name
+    const [check] = await pool.query("SELECT id FROM users WHERE LOWER(team)=LOWER(?)", [newTeamName]);
+    if (check.length > 0) return res.send("Team name already taken!");
 
-    [result] = await pool.query("SELECT id FROM tournament_matches WHERE match_date = CURRENT_DATE LIMIT 1");
-    if (result.length > 0) return res.redirect(`/live/${result[0].id}`);
+    // Cascade update team name across references
+    await pool.query("UPDATE users SET team=? WHERE id=?", [newTeamName, req.user.id]);
+    await pool.query("UPDATE players SET team=? WHERE team=?", [newTeamName, oldTeamName]);
+    await pool.query("UPDATE tournament_teams SET team_name=? WHERE team_name=?", [newTeamName, oldTeamName]);
+    await pool.query("UPDATE tournament_matches SET teama=? WHERE teama=?", [newTeamName, oldTeamName]);
+    await pool.query("UPDATE tournament_matches SET teamb=? WHERE teamb=?", [newTeamName, oldTeamName]);
+    await pool.query("UPDATE game_events SET team_name=? WHERE team_name=?", [newTeamName, oldTeamName]);
 
-    [result] = await pool.query("SELECT id FROM tournament_matches ORDER BY id ASC LIMIT 1");
-    if (result.length > 0) return res.redirect(`/live/${result[0].id}`);
+    // Update the active passport session so the UI changes instantly
+    req.user.team = newTeamName;
 
-    res.send("No matches available");
+    res.redirect("/team-dashboard");
   } catch (err) {
-    console.log(err);
-    res.send("Error loading live page");
+    console.error("TEAM EDIT CASCADE ERROR:", err);
+    res.redirect("/team-dashboard");
   }
 });
-
-app.get("/live/:matchId", async (req, res) => {
-  const matchId = req.params.matchId;
+app.post("/player/:id/edit", upload.single("image"), async (req, res) => {
+  if (!req.isAuthenticated()) return res.redirect("/login");
+  
+  const { id } = req.params;
+  const { name, role, position } = req.body; // Added position here
+  
   try {
-    const [matchResult] = await pool.query("SELECT * FROM tournament_matches WHERE id=?", [matchId]);
-    if (matchResult.length === 0) return res.send("Match not found");
-    const match = matchResult[0];
-
-    const [teamAPlayers] = await pool.query("SELECT * FROM players WHERE LOWER(team)=LOWER(?)", [match.teama]);
-    const [teamBPlayers] = await pool.query("SELECT * FROM players WHERE LOWER(team)=LOWER(?)", [match.teamb]);
-
-    res.render("pages/live", {
-      matchId,
-      match,
-      teamAPlayers,
-      teamBPlayers
-    });
+    if (req.file) {
+      const imagePath = "/assets/players/" + req.file.filename;
+      await pool.query(
+        "UPDATE players SET name=?, role=?, position=?, image=? WHERE id=? AND team=?", 
+        [name, role, position, imagePath, id, req.user.team]
+      );
+    } else {
+      await pool.query(
+        "UPDATE players SET name=?, role=?, position=? WHERE id=? AND team=?", 
+        [name, role, position, id, req.user.team]
+      );
+    }
+    
+    res.redirect("/team-dashboard");
   } catch (err) {
-    console.log("LIVE PAGE ERROR:", err);
-    res.send("Error loading live page");
+    console.error("EDIT PLAYER ERROR:", err);
+    res.redirect("/team-dashboard");
   }
 });
 
@@ -472,96 +298,263 @@ app.get("/api/match/:id/players", async (req, res) => {
   }
 });
 
-/* =========================
-   TOURNAMENTS
-========================= */
+
+
+// --- Tournament Administration (Organizers) ---
+
+app.get("/manage-tournaments", async (req, res) => {
+  if (!req.isAuthenticated()) return res.redirect("/login");
+
+  try {
+    let myTournaments = [];
+
+    if (req.user.is_admin) {
+      // Global admin: fetch all tournaments
+      const [allTourneys] = await pool.query("SELECT * FROM tournaments ORDER BY start_date DESC");
+      myTournaments = allTourneys;
+    } else {
+      // Regular user: fetch only their created tournaments
+      const [userTourneys] = await pool.query(
+        "SELECT * FROM tournaments WHERE created_by = ? ORDER BY start_date DESC",
+        [req.user.id]
+      );
+      myTournaments = userTourneys;
+    }
+
+    res.render("pages/manage-tournaments", { // Use whatever your organizer EJS file is named
+      user: req.user,
+      myTournaments
+    });
+
+  } catch (err) {
+    console.error("ORGANIZER DASHBOARD ERROR:", err);
+    res.redirect("/");
+  }
+});
+app.get("/manage-tournaments/:id", async (req, res) => {
+  if (!req.isAuthenticated()) return res.redirect("/login");
+  const { id } = req.params;
+
+  try {
+    const [tourn] = await pool.query("SELECT * FROM tournaments WHERE id=?", [id]);
+    if (tourn.length === 0) return res.redirect("/admin");
+
+    // SECURITY LOCK: Only creator or global admin can view this page
+    if (tourn[0].created_by !== req.user.id && !req.user.is_admin) {
+      return res.status(403).send("Unauthorized action.");
+    }
+
+    const [teams] = await pool.query("SELECT * FROM tournament_teams WHERE tournament_id=?", [id]);
+    const [matches] = await pool.query("SELECT * FROM tournament_matches WHERE tournament_id=? ORDER BY id ASC", [id]);
+    const [users] = await pool.query("SELECT id, team FROM users WHERE team IS NOT NULL AND team != 'ADMIN'");
+    const [leaderboard] = await pool.query("SELECT * FROM tournament_teams WHERE tournament_id=? ORDER BY points DESC, wins DESC", [id]);
+
+    res.render("pages/manage-tournament-detail", {
+      user: req.user, tournament: tourn[0], teams, matches, users, leaderboard, isRegistered: false
+    });
+  } catch (err) {
+    console.error("ADMIN TOURNAMENT HUB ERROR:", err);
+    res.redirect("/admin");
+  }
+});
 app.get("/tournaments/create", (req, res) => {
   if (!req.isAuthenticated()) return res.redirect("/login");
   res.render("pages/create-tournament", { user: req.user });
 });
+app.post("/tournaments/create", upload.single("image"), async (req, res) => {
+  if (!req.isAuthenticated()) return res.redirect("/login");
 
-app.get("/tournaments", async (req, res) => {
+  const { name, location, start_date, end_date, max_teams } = req.body;
+  const imagePath = req.file ? "/assets/tournaments/" + req.file.filename : "/assets/tournaments/default.png";
+
   try {
-    const [tournaments] = await pool.query("SELECT * FROM tournaments ORDER BY start_date ASC");
-    res.render("pages/tournaments", { tournaments, user: req.user });
+    await pool.query(
+      `INSERT INTO tournaments (name, location, start_date, end_date, max_teams, status, image, created_by) VALUES (?,?,?,?,?,'UPCOMING',?,?)`,
+      [name, location, start_date, end_date, max_teams, imagePath, req.user.id]
+    );
+    res.redirect("/tournaments");
   } catch (err) {
-    console.log(err);
+    console.log("CREATE TOURNAMENT ERROR:", err);
+    res.redirect("/tournaments");
   }
 });
-
-app.get("/tournaments/:id", async (req, res) => {
+app.post("/tournaments/:id/edit", async (req, res) => {
+  if (!req.isAuthenticated()) return res.redirect("/login");
   const { id } = req.params;
+  const { name, location, start_date, end_date, max_teams, image } = req.body;
+
   try {
-    const [tournament] = await pool.query("SELECT * FROM tournaments WHERE id=?", [id]);
-    const [teams] = await pool.query("SELECT * FROM tournament_teams WHERE tournament_id=? ORDER BY registered_at ASC", [id]);
-    const [leaderboard] = await pool.query("SELECT * FROM tournament_teams WHERE tournament_id=? ORDER BY points DESC, wins DESC", [id]);
-
-    let matches = [];
-    if (teams.length > 0) {
-      [matches] = await pool.query("SELECT * FROM tournament_matches WHERE tournament_id=? ORDER BY match_date ASC", [id]);
+    const [tourn] = await pool.query("SELECT created_by FROM tournaments WHERE id=?", [id]);
+    if (tourn[0].created_by !== req.user.id && !req.user.is_admin) {
+      return res.status(403).send("Unauthorized action.");
     }
 
-    const [users] = await pool.query("SELECT id, team FROM users ORDER BY team ASC");
+    await pool.query(
+      "UPDATE tournaments SET name=?, location=?, start_date=?, end_date=?, max_teams=?, image=? WHERE id=?",
+      [name, location, start_date, end_date, max_teams, image, id]
+    );
 
-    let isRegistered = false;
-    if (req.isAuthenticated()) {
-      const [check] = await pool.query("SELECT * FROM tournament_teams WHERE tournament_id=? AND LOWER(team_name)=LOWER(?)", [id, req.user.team]);
-      isRegistered = check.length > 0;
-    }
-
-    res.render("pages/tournament-detail", {
-      tournament: tournament[0],
-      teams,
-      matches,
-      isRegistered,
-      user: req.user,
-      users,
-      leaderboard
-    });
+    res.redirect(`/manage-tournaments/${id}`);
   } catch (err) {
-    console.log(err);
+    console.error("EDIT TOURNAMENT ERROR:", err);
+    res.redirect(`/manage-tournaments/${id}`);
   }
 });
-
-
-// Register team for tournament (General User)
-app.post("/tournaments/:id/register", async (req, res) => {
+app.post("/tournaments/:id/delete", async (req, res) => {
   if (!req.isAuthenticated()) return res.redirect("/login");
   const { id } = req.params;
 
   try {
-    // Check if the team is already registered
-    const [check] = await pool.query(
-      "SELECT * FROM tournament_teams WHERE tournament_id=? AND LOWER(team_name)=LOWER(?)",
-      [id, req.user.team]
-    );
+    const [result] = await pool.query("SELECT created_by FROM tournaments WHERE id=?", [id]);
+    if (result.length === 0) return res.redirect("/tournaments");
 
-    if (check.length === 0) {
-      await pool.query(
-        "INSERT INTO tournament_teams (tournament_id, team_name) VALUES (?, ?)",
-        [id, req.user.team]
-      );
+    // SECURITY LOCK: Only creator (or a global admin) can delete
+    if (result[0].created_by !== req.user.id && !req.user.is_admin) {
+      return res.status(403).send("Unauthorized: You do not own this tournament.");
     }
+
+    await pool.query("DELETE FROM tournament_teams WHERE tournament_id=?", [id]);
+    await pool.query("DELETE FROM tournament_matches WHERE tournament_id=?", [id]);
+    await pool.query("DELETE FROM tournaments WHERE id=?", [id]);
+
+    res.redirect("/manage-tournaments");
+  } catch (err) {
+    console.log("DELETE TOURNAMENT ERROR:", err);
+    res.redirect("/tournaments");
+  }
+});
+app.post("/tournaments/:id/add-team", async (req, res) => {
+  if (!req.isAuthenticated()) return res.redirect("/login");
+  const { id } = req.params;
+  const { team_id } = req.body;
+
+  try {
+    const [tournamentResult] = await pool.query("SELECT created_by FROM tournaments WHERE id=?", [id]);
+    if (tournamentResult.length === 0) return res.redirect("/tournaments");
+
+    // SECURITY LOCK
+    if (tournamentResult[0].created_by !== req.user.id && !req.user.is_admin) {
+      return res.status(403).send("Unauthorized: You do not own this tournament.");
+    }
+
+    const [teamData] = await pool.query("SELECT team FROM users WHERE id=?", [team_id]);
+    if (teamData.length === 0) return res.redirect(`/tournaments/${id}`);
+
+    const teamName = teamData[0].team;
+
+    // Prevent duplicate entries
+    const [check] = await pool.query("SELECT * FROM tournament_teams WHERE tournament_id=? AND LOWER(team_name)=LOWER(?)", [id, teamName]);
+    if (check.length === 0) {
+      await pool.query("INSERT INTO tournament_teams (tournament_id, team_name) VALUES (?,?)", [id, teamName]);
+    }
+
     res.redirect(`/tournaments/${id}`);
   } catch (err) {
-    console.log(err);
+    console.log("ADD TEAM ERROR:", err);
     res.redirect(`/tournaments/${id}`);
   }
 });
+app.post("/tournaments/:tid/remove-team/:teamId", async (req, res) => {
+  if (!req.isAuthenticated()) return res.redirect("/login");
+  const { tid, teamId } = req.params;
 
+  try {
+    const [tournamentResult] = await pool.query("SELECT created_by FROM tournaments WHERE id=?", [tid]);
+    if (tournamentResult.length === 0) return res.redirect("/tournaments");
 
-app.get("/news", (req, res) => {
-  const news = [{
-    _id: "1", title: "Final Match Announced", date: "March 18, 2026", author: "Admin",
-    description: "The final match will be held this Sunday...", image: "/assets/news/match.jpg"
-  }];
-  res.render("pages/news", { news });
+    // SECURITY LOCK
+    if (tournamentResult[0].created_by !== req.user.id && !req.user.is_admin) {
+      return res.status(403).send("Unauthorized: You do not own this tournament.");
+    }
+
+    await pool.query("DELETE FROM tournament_teams WHERE id=? AND tournament_id=?", [teamId, tid]);
+
+    // Optional: Also delete any matches this team was already scheduled for
+    await pool.query("DELETE FROM tournament_matches WHERE tournament_id=? AND (teama=(SELECT team_name FROM tournament_teams WHERE id=?) OR teamb=(SELECT team_name FROM tournament_teams WHERE id=?))", [tid, teamId, teamId]);
+
+    res.redirect(`/tournaments/${tid}`);
+  } catch (err) {
+    console.error("REMOVE TEAM ERROR:", err);
+    res.redirect(`/tournaments/${tid}`);
+  }
+});
+app.post("/tournaments/:id/finalize", async (req, res) => {
+  if (!req.isAuthenticated()) return res.redirect("/login");
+  const { id } = req.params;
+
+  try {
+    const [tournCheck] = await pool.query("SELECT created_by FROM tournaments WHERE id=?", [id]);
+    if (tournCheck.length === 0) return res.redirect("/manage-tournaments");
+
+    // SECURITY LOCK
+    if (tournCheck[0].created_by !== req.user.id && !req.user.is_admin) {
+      return res.status(403).send("Unauthorized action.");
+    }
+
+    const [allMatches] = await pool.query("SELECT * FROM tournament_matches WHERE tournament_id=? ORDER BY id ASC", [id]);
+    const finalMatch = allMatches.find(m => m.round === "FINAL");
+
+    let champ = null, ru = null, sru = null;
+
+    if (finalMatch && finalMatch.status === "FINAL") {
+      // Knockout/Hybrid calculations
+      champ = finalMatch.winner;
+      ru = finalMatch.winner === finalMatch.teama ? finalMatch.teamb : finalMatch.teama;
+
+      // Calculate 3rd place from Semi-Final losers
+      const semiMatches = allMatches.filter(m => m.round === "SEMI FINAL" && m.status === "FINAL");
+      if (semiMatches.length === 2) {
+        const loser1 = semiMatches[0].winner === semiMatches[0].teama ? semiMatches[0].teamb : semiMatches[0].teama;
+        const loser2 = semiMatches[1].winner === semiMatches[1].teama ? semiMatches[1].teamb : semiMatches[1].teama;
+
+        const [stats] = await pool.query("SELECT team_name FROM tournament_teams WHERE tournament_id=? AND team_name IN (?, ?) ORDER BY points DESC, wins DESC LIMIT 1", [id, loser1, loser2]);
+        if (stats.length > 0) sru = stats[0].team_name;
+      }
+    } else {
+      // Round robin/League calculations
+      const [leaderboard] = await pool.query("SELECT team_name FROM tournament_teams WHERE tournament_id=? ORDER BY points DESC, wins DESC LIMIT 3", [id]);
+      if (leaderboard.length > 0) champ = leaderboard[0].team_name;
+      if (leaderboard.length > 1) ru = leaderboard[1].team_name;
+      if (leaderboard.length > 2) sru = leaderboard[2].team_name;
+    }
+
+    // Lock it in!
+    await pool.query("UPDATE tournaments SET status='COMPLETED', champion=?, runner_up=?, second_runner_up=? WHERE id=?", [champ, ru, sru, id]);
+
+    res.redirect(`/manage-tournaments/${id}`);
+  } catch (err) {
+    console.error("FINALIZE ERROR:", err);
+    res.redirect(`/manage-tournaments/${id}`);
+  }
 });
 
+app.post("/tournaments/:id/reset", async (req, res) => {
+  if (!req.isAuthenticated()) return res.redirect("/login");
+  const { id } = req.params;
 
-/* =========================
-   GENERATE FIXTURES (THE MASTER ENGINE)
-========================= */
+  try {
+    const [tournCheck] = await pool.query("SELECT created_by FROM tournaments WHERE id=?", [id]);
+    if (tournCheck.length === 0) return res.redirect("/manage-tournaments");
+
+    if (tournCheck[0].created_by !== req.user.id && !req.user.is_admin) {
+      return res.status(403).send("Unauthorized action.");
+    }
+
+    // 1. Wipe all generated matches
+    await pool.query("DELETE FROM tournament_matches WHERE tournament_id=?", [id]);
+
+    // 2. Set all team standings back to pure zero
+    await pool.query("UPDATE tournament_teams SET matches_played=0, wins=0, losses=0, ties=0, points=0 WHERE tournament_id=?", [id]);
+
+    // 3. Strip the Champion and reset the status
+    await pool.query("UPDATE tournaments SET status='ACTIVE', champion=NULL, runner_up=NULL, second_runner_up=NULL WHERE id=?", [id]);
+
+    res.redirect(`/manage-tournaments/${id}`);
+  } catch (err) {
+    console.error("RESET ERROR:", err);
+    res.redirect(`/manage-tournaments/${id}`);
+  }
+});
 app.post("/admin/generate-fixtures/:tournamentId", async (req, res) => {
   if (!req.isAuthenticated()) return res.redirect("/login");
 
@@ -569,7 +562,7 @@ app.post("/admin/generate-fixtures/:tournamentId", async (req, res) => {
   const { type } = req.body;
 
   try {
-    // 1. SECURITY LOCK: Verify Ownership
+    // Verify tournament ownership
     const [tournamentCheck] = await pool.query("SELECT created_by FROM tournaments WHERE id=?", [tournamentId]);
     if (tournamentCheck.length === 0) return res.redirect("/tournaments");
 
@@ -580,11 +573,11 @@ app.post("/admin/generate-fixtures/:tournamentId", async (req, res) => {
     // 2. Fetch the current roster of teams
     const [teamList] = await pool.query("SELECT * FROM tournament_teams WHERE tournament_id=?", [tournamentId]);
 
-    // 3. WIPE THE SLATE CLEAN: Delete old fixtures to prevent duplicates
+    // Clear existing fixtures
     await pool.query("DELETE FROM tournament_matches WHERE tournament_id=?", [tournamentId]);
 
 
-    // 🟠 4. GENERATE: ROUND ROBIN
+    // Generate round robin fixtures
     if (type === "round") {
       for (let i = 0; i < teamList.length; i++) {
         for (let j = i + 1; j < teamList.length; j++) {
@@ -596,7 +589,7 @@ app.post("/admin/generate-fixtures/:tournamentId", async (req, res) => {
       }
     }
 
-    // 🔴 5. GENERATE: KNOCKOUT (Power-of-2)
+    // Generate knockout fixtures
     else if (type === "knockout") {
       if (teamList.length < 2) return res.redirect(`/tournaments/${tournamentId}`);
 
@@ -661,7 +654,7 @@ app.post("/admin/generate-fixtures/:tournamentId", async (req, res) => {
       }
     }
 
-    // 🟢 6. GENERATE: HYBRID (Groups into Knockout)
+    // Generate hybrid fixtures
     else if (type === "hybrid") {
       const groupsCount = parseInt(req.body.group_count) || 2;
       const advancingCount = parseInt(req.body.advancing_count) || 2;
@@ -709,7 +702,7 @@ app.post("/admin/generate-fixtures/:tournamentId", async (req, res) => {
       }
     }
 
-    // 🟣 7. GENERATE: CUSTOM (Blank Canvas)
+    // Generate custom fixture placeholders
     else if (type === "custom") {
       // Create a single completely blank match card for the organizer to start with.
       await pool.query(
@@ -725,117 +718,231 @@ app.post("/admin/generate-fixtures/:tournamentId", async (req, res) => {
   }
 });
 
-app.post("/tournaments/create", upload.single("image"), async (req, res) => {
-  if (!req.isAuthenticated()) return res.redirect("/login");
 
-  const { name, location, start_date, end_date, max_teams } = req.body;
-  const imagePath = req.file ? "/assets/tournaments/" + req.file.filename : "/assets/tournaments/default.png";
+
+// --- Tournament Views & Standings (Public) ---
+
+
+app.get("/tournaments", async (req, res) => {
+  try {
+    const [tournaments] = await pool.query("SELECT * FROM tournaments ORDER BY start_date ASC");
+    res.render("pages/tournaments", { tournaments, user: req.user });
+  } catch (err) {
+    console.log(err);
+  }
+});
+app.get("/tournaments/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const [tournament] = await pool.query("SELECT * FROM tournaments WHERE id=?", [id]);
+    const [teams] = await pool.query("SELECT * FROM tournament_teams WHERE tournament_id=? ORDER BY registered_at ASC", [id]);
+    const [leaderboard] = await pool.query("SELECT * FROM tournament_teams WHERE tournament_id=? ORDER BY points DESC, wins DESC", [id]);
+
+    let matches = [];
+    if (teams.length > 0) {
+      [matches] = await pool.query("SELECT * FROM tournament_matches WHERE tournament_id=? ORDER BY match_date ASC", [id]);
+    }
+
+    const [users] = await pool.query("SELECT id, team FROM users ORDER BY team ASC");
+
+    let isRegistered = false;
+    if (req.isAuthenticated()) {
+      const [check] = await pool.query("SELECT * FROM tournament_teams WHERE tournament_id=? AND LOWER(team_name)=LOWER(?)", [id, req.user.team]);
+      isRegistered = check.length > 0;
+    }
+
+    res.render("pages/tournament-detail", {
+      tournament: tournament[0],
+      teams,
+      matches,
+      isRegistered,
+      user: req.user,
+      users,
+      leaderboard
+    });
+  } catch (err) {
+    console.log(err);
+  }
+});
+
+app.post("/tournaments/:id/register", async (req, res) => {
+  if (!req.isAuthenticated()) return res.redirect("/login");
+  const { id } = req.params;
 
   try {
-    await pool.query(
-      `INSERT INTO tournaments (name, location, start_date, end_date, max_teams, status, image, created_by) VALUES (?,?,?,?,?,'UPCOMING',?,?)`,
-      [name, location, start_date, end_date, max_teams, imagePath, req.user.id]
+    // Check if the team is already registered
+    const [check] = await pool.query(
+      "SELECT * FROM tournament_teams WHERE tournament_id=? AND LOWER(team_name)=LOWER(?)",
+      [id, req.user.team]
     );
-    res.redirect("/tournaments");
-  } catch (err) {
-    console.log("CREATE TOURNAMENT ERROR:", err);
-    res.redirect("/tournaments");
-  }
-});
 
-/* =========================
-   DELETE TOURNAMENT (CREATOR ONLY)
-========================= */
-app.post("/tournaments/:id/delete", async (req, res) => {
-  if (!req.isAuthenticated()) return res.redirect("/login");
-  const { id } = req.params;
-
-  try {
-    const [result] = await pool.query("SELECT created_by FROM tournaments WHERE id=?", [id]);
-    if (result.length === 0) return res.redirect("/tournaments");
-
-    // SECURITY LOCK: Only creator (or a global admin) can delete
-    if (result[0].created_by !== req.user.id && !req.user.is_admin) {
-      return res.status(403).send("Unauthorized: You do not own this tournament.");
-    }
-
-    await pool.query("DELETE FROM tournament_teams WHERE tournament_id=?", [id]);
-    await pool.query("DELETE FROM tournament_matches WHERE tournament_id=?", [id]);
-    await pool.query("DELETE FROM tournaments WHERE id=?", [id]);
-
-    res.redirect("/manage-tournaments");
-  } catch (err) {
-    console.log("DELETE TOURNAMENT ERROR:", err);
-    res.redirect("/tournaments");
-  }
-});
-
-/* =========================
-   MANUALLY ADD TEAM (CREATOR ONLY)
-========================= */
-app.post("/tournaments/:id/add-team", async (req, res) => {
-  if (!req.isAuthenticated()) return res.redirect("/login");
-  const { id } = req.params;
-  const { team_id } = req.body;
-
-  try {
-    const [tournamentResult] = await pool.query("SELECT created_by FROM tournaments WHERE id=?", [id]);
-    if (tournamentResult.length === 0) return res.redirect("/tournaments");
-
-    // SECURITY LOCK
-    if (tournamentResult[0].created_by !== req.user.id && !req.user.is_admin) {
-      return res.status(403).send("Unauthorized: You do not own this tournament.");
-    }
-
-    const [teamData] = await pool.query("SELECT team FROM users WHERE id=?", [team_id]);
-    if (teamData.length === 0) return res.redirect(`/tournaments/${id}`);
-
-    const teamName = teamData[0].team;
-
-    // Prevent duplicate entries
-    const [check] = await pool.query("SELECT * FROM tournament_teams WHERE tournament_id=? AND LOWER(team_name)=LOWER(?)", [id, teamName]);
     if (check.length === 0) {
-      await pool.query("INSERT INTO tournament_teams (tournament_id, team_name) VALUES (?,?)", [id, teamName]);
+      await pool.query(
+        "INSERT INTO tournament_teams (tournament_id, team_name) VALUES (?, ?)",
+        [id, req.user.team]
+      );
     }
-
     res.redirect(`/tournaments/${id}`);
   } catch (err) {
-    console.log("ADD TEAM ERROR:", err);
+    console.log(err);
     res.redirect(`/tournaments/${id}`);
   }
 });
 
-/* =========================
-   REMOVE TEAM (CREATOR ONLY)
-========================= */
-app.post("/tournaments/:tid/remove-team/:teamId", async (req, res) => {
+app.get("/standings", async (req, res) => {
+  try {
+    // 1. Fetch all tournaments to build the top navigation tabs
+    const [tournaments] = await pool.query("SELECT * FROM tournaments ORDER BY id DESC");
+
+    // 2. Fetch ALL matches across the entire platform, joining the tournament name
+    // (Your EJS explicitly looks for 'm.tournament_name')
+    const [allMatches] = await pool.query(`
+      SELECT m.*, t.name AS tournament_name 
+      FROM tournament_matches m
+      JOIN tournaments t ON m.tournament_id = t.id
+      ORDER BY m.id ASC
+    `);
+
+    // 3. Group matches by their tournament_id into a dictionary object
+    // (This feeds the "matchesByTournament[t.id]" logic in your EJS)
+    const matchesByTournament = {};
+    allMatches.forEach(match => {
+      if (!matchesByTournament[match.tournament_id]) {
+        matchesByTournament[match.tournament_id] = [];
+      }
+      matchesByTournament[match.tournament_id].push(match);
+    });
+
+    // 4. Calculate total matches for the header counter
+    const totalMatches = allMatches.length;
+
+    // 5. Render the page and inject the data!
+    res.render("pages/standings", {
+      user: req.user, // Crucial so your Navbar partial doesn't break
+      tournaments,
+      allMatches,
+      matchesByTournament,
+      totalMatches
+    });
+
+  } catch (err) {
+    console.error("STANDINGS PAGE ERROR:", err);
+    res.redirect("/");
+  }
+});
+
+
+// --- Match Operations & Live Scoring ---
+app.get("/score-match/:matchId", async (req, res) => {
   if (!req.isAuthenticated()) return res.redirect("/login");
-  const { tid, teamId } = req.params;
+  const { matchId } = req.params;
 
   try {
-    const [tournamentResult] = await pool.query("SELECT created_by FROM tournaments WHERE id=?", [tid]);
-    if (tournamentResult.length === 0) return res.redirect("/tournaments");
+    // 1. Find the tournament this match belongs to
+    const [targetMatch] = await pool.query(`
+      SELECT m.tournament_id, t.created_by 
+      FROM tournament_matches m
+      JOIN tournaments t ON m.tournament_id = t.id
+      WHERE m.id = ?
+    `, [matchId]);
 
-    // SECURITY LOCK
-    if (tournamentResult[0].created_by !== req.user.id && !req.user.is_admin) {
-      return res.status(403).send("Unauthorized: You do not own this tournament.");
+    if (targetMatch.length === 0) return res.redirect("/admin");
+    if (targetMatch[0].created_by !== req.user.id && !req.user.is_admin) return res.status(403).send("Unauthorized");
+
+    const tournamentId = targetMatch[0].tournament_id;
+
+    // 2. Fetch all matches for this tournament to populate the dropdowns
+    const [matches] = await pool.query("SELECT * FROM tournament_matches WHERE tournament_id=? ORDER BY id ASC", [tournamentId]);
+
+    // 3. Render the live score page, passing the specific Match ID that was clicked
+    res.render("pages/live-score", {
+      matches,
+      selectedMatchId: matchId
+    });
+  } catch (err) {
+    console.error("LIVE SCORE ERROR:", err);
+    res.redirect("/admin");
+  }
+});
+app.post("/matches/:id/set-live", async (req, res) => {
+  if (!req.isAuthenticated()) return res.redirect("/login");
+  const { id } = req.params;
+
+  try {
+    const [matchCheck] = await pool.query(`
+      SELECT m.tournament_id, t.created_by 
+      FROM tournament_matches m
+      JOIN tournaments t ON m.tournament_id = t.id
+      WHERE m.id = ?
+    `, [id]);
+
+    if (matchCheck.length === 0) return res.redirect("/admin");
+    if (matchCheck[0].created_by !== req.user.id && !req.user.is_admin) {
+      return res.status(403).send("Unauthorized");
     }
 
-    await pool.query("DELETE FROM tournament_teams WHERE id=? AND tournament_id=?", [teamId, tid]);
-
-    // Optional: Also delete any matches this team was already scheduled for
-    await pool.query("DELETE FROM tournament_matches WHERE tournament_id=? AND (teama=(SELECT team_name FROM tournament_teams WHERE id=?) OR teamb=(SELECT team_name FROM tournament_teams WHERE id=?))", [tid, teamId, teamId]);
-
-    res.redirect(`/tournaments/${tid}`);
+    // Flip the status to LIVE
+    await pool.query("UPDATE tournament_matches SET status='LIVE' WHERE id=?", [id]);
+    
+    res.redirect(`/manage-tournaments/${matchCheck[0].tournament_id}`);
   } catch (err) {
-    console.error("REMOVE TEAM ERROR:", err);
-    res.redirect(`/tournaments/${tid}`);
+    console.error("SET LIVE ERROR:", err);
+    res.redirect("/admin");
   }
 });
 
-/* =========================
-   UPDATE SCORE & RECALCULATE ENGINE 
-========================= */
+app.post("/matches/:id/edit-date", async (req, res) => {
+  if (!req.isAuthenticated()) return res.redirect("/login");
+  const { id } = req.params;
+  const { match_date } = req.body;
+
+  try {
+    const [matchCheck] = await pool.query(`
+      SELECT m.tournament_id, t.created_by 
+      FROM tournament_matches m
+      JOIN tournaments t ON m.tournament_id = t.id
+      WHERE m.id = ?
+    `, [id]);
+
+    if (matchCheck.length === 0) return res.redirect("/admin");
+    if (matchCheck[0].created_by !== req.user.id && !req.user.is_admin) return res.status(403).send("Unauthorized");
+
+    await pool.query("UPDATE tournament_matches SET match_date=? WHERE id=?", [match_date || null, id]);
+    res.redirect(`/manage-tournaments/${matchCheck[0].tournament_id}`);
+  } catch (err) {
+    console.error("EDIT MATCH DATE ERROR:", err);
+    res.redirect("/admin");
+  }
+});
+app.post("/matches/:id/edit-teams", async (req, res) => {
+  if (!req.isAuthenticated()) return res.redirect("/login");
+  const { id } = req.params;
+  const { teamA, teamB } = req.body;
+
+  try {
+    const [matchResult] = await pool.query(`
+      SELECT m.tournament_id, t.created_by 
+      FROM tournament_matches m
+      JOIN tournaments t ON m.tournament_id = t.id
+      WHERE m.id = ?
+    `, [id]);
+
+    if (matchResult.length === 0) return res.redirect("/manage-tournaments");
+
+    if (matchResult[0].created_by !== req.user.id && !req.user.is_admin) {
+      return res.status(403).send("Unauthorized action.");
+    }
+
+    // Override the teams in this match
+    await pool.query("UPDATE tournament_matches SET teama=?, teamb=? WHERE id=?", [teamA, teamB, id]);
+
+    res.redirect(`/manage-tournaments/${matchResult[0].tournament_id}`);
+  } catch (err) {
+    console.error("EDIT MATCH ERROR:", err);
+    res.redirect("/manage-tournaments");
+  }
+});
+
 app.post("/matches/:id/result", async (req, res) => {
   if (!req.isAuthenticated()) return res.redirect("/login");
   const { id } = req.params;
@@ -856,7 +963,7 @@ app.post("/matches/:id/result", async (req, res) => {
       return res.status(403).send("Unauthorized action.");
     }
 
-    // 1. Determine Match Winner & Loser
+    // Determine match winner and loser
     let winner;
     if (parseInt(scoreA) > parseInt(scoreB)) {
       winner = currentMatch.teama;
@@ -872,9 +979,7 @@ app.post("/matches/:id/result", async (req, res) => {
       [scoreA, scoreB, winner, id]
     );
 
-    // ==========================================
-    // 📊 BULLETPROOF LEADERBOARD RECALCULATION
-    // ==========================================
+        // Leaderboard recalculation
 
     // Step A: Wipe all current stats for this tournament back to 0
     await pool.query(
@@ -919,9 +1024,7 @@ app.post("/matches/:id/result", async (req, res) => {
       }
     }
 
-    // ==========================================
-    // 🚀 AUTO-ADVANCE LOGIC 
-    // ==========================================
+        // Auto-advance logic
     if (!currentMatch.round.includes("STAGE") && currentMatch.round !== "CUSTOM MATCH" && winner !== "DRAW" && currentMatch.round !== "FINAL") {
       const [allMatches] = await pool.query("SELECT * FROM tournament_matches WHERE tournament_id=? ORDER BY id ASC", [currentMatch.tournament_id]);
       const uniqueRounds = [...new Set(allMatches.map(m => m.round))];
@@ -953,203 +1056,47 @@ app.post("/matches/:id/result", async (req, res) => {
   }
 });
 
-
-/* =========================
-   MANUALLY FINALIZE TOURNAMENT (CREATOR ONLY)
-========================= */
-app.post("/tournaments/:id/finalize", async (req, res) => {
-  if (!req.isAuthenticated()) return res.redirect("/login");
-  const { id } = req.params;
-
+app.get("/live", async (req, res) => {
   try {
-    const [tournCheck] = await pool.query("SELECT created_by FROM tournaments WHERE id=?", [id]);
-    if (tournCheck.length === 0) return res.redirect("/manage-tournaments");
+    let [result] = await pool.query("SELECT id FROM tournament_matches WHERE status='LIVE' LIMIT 1");
+    if (result.length > 0) return res.redirect(`/live/${result[0].id}`);
 
-    // SECURITY LOCK
-    if (tournCheck[0].created_by !== req.user.id && !req.user.is_admin) {
-      return res.status(403).send("Unauthorized action.");
-    }
+    [result] = await pool.query("SELECT id FROM tournament_matches WHERE match_date = CURRENT_DATE LIMIT 1");
+    if (result.length > 0) return res.redirect(`/live/${result[0].id}`);
 
-    const [allMatches] = await pool.query("SELECT * FROM tournament_matches WHERE tournament_id=? ORDER BY id ASC", [id]);
-    const finalMatch = allMatches.find(m => m.round === "FINAL");
+    [result] = await pool.query("SELECT id FROM tournament_matches ORDER BY id ASC LIMIT 1");
+    if (result.length > 0) return res.redirect(`/live/${result[0].id}`);
 
-    let champ = null, ru = null, sru = null;
-
-    if (finalMatch && finalMatch.status === "FINAL") {
-      // 🏆 KNOCKOUT / HYBRID MATH
-      champ = finalMatch.winner;
-      ru = finalMatch.winner === finalMatch.teama ? finalMatch.teamb : finalMatch.teama;
-
-      // Calculate 3rd place from Semi-Final losers
-      const semiMatches = allMatches.filter(m => m.round === "SEMI FINAL" && m.status === "FINAL");
-      if (semiMatches.length === 2) {
-        const loser1 = semiMatches[0].winner === semiMatches[0].teama ? semiMatches[0].teamb : semiMatches[0].teama;
-        const loser2 = semiMatches[1].winner === semiMatches[1].teama ? semiMatches[1].teamb : semiMatches[1].teama;
-
-        const [stats] = await pool.query("SELECT team_name FROM tournament_teams WHERE tournament_id=? AND team_name IN (?, ?) ORDER BY points DESC, wins DESC LIMIT 1", [id, loser1, loser2]);
-        if (stats.length > 0) sru = stats[0].team_name;
-      }
-    } else {
-      // 🏆 ROUND ROBIN / LEAGUE MATH
-      const [leaderboard] = await pool.query("SELECT team_name FROM tournament_teams WHERE tournament_id=? ORDER BY points DESC, wins DESC LIMIT 3", [id]);
-      if (leaderboard.length > 0) champ = leaderboard[0].team_name;
-      if (leaderboard.length > 1) ru = leaderboard[1].team_name;
-      if (leaderboard.length > 2) sru = leaderboard[2].team_name;
-    }
-
-    // Lock it in!
-    await pool.query("UPDATE tournaments SET status='COMPLETED', champion=?, runner_up=?, second_runner_up=? WHERE id=?", [champ, ru, sru, id]);
-
-    res.redirect(`/manage-tournaments/${id}`);
+    res.send("No matches available");
   } catch (err) {
-    console.error("FINALIZE ERROR:", err);
-    res.redirect(`/manage-tournaments/${id}`);
+    console.log(err);
+    res.send("Error loading live page");
   }
 });
-
-
-/* =========================
-   HARD RESET CURRENT SEASON (CREATOR ONLY)
-========================= */
-app.post("/tournaments/:id/reset", async (req, res) => {
-  if (!req.isAuthenticated()) return res.redirect("/login");
-  const { id } = req.params;
-
+app.get("/live/:matchId", async (req, res) => {
+  const matchId = req.params.matchId;
   try {
-    const [tournCheck] = await pool.query("SELECT created_by FROM tournaments WHERE id=?", [id]);
-    if (tournCheck.length === 0) return res.redirect("/manage-tournaments");
+    const [matchResult] = await pool.query("SELECT * FROM tournament_matches WHERE id=?", [matchId]);
+    if (matchResult.length === 0) return res.send("Match not found");
+    const match = matchResult[0];
 
-    if (tournCheck[0].created_by !== req.user.id && !req.user.is_admin) {
-      return res.status(403).send("Unauthorized action.");
-    }
+    const [teamAPlayers] = await pool.query("SELECT * FROM players WHERE LOWER(team)=LOWER(?)", [match.teama]);
+    const [teamBPlayers] = await pool.query("SELECT * FROM players WHERE LOWER(team)=LOWER(?)", [match.teamb]);
 
-    // 1. Wipe all generated matches
-    await pool.query("DELETE FROM tournament_matches WHERE tournament_id=?", [id]);
-
-    // 2. Set all team standings back to pure zero
-    await pool.query("UPDATE tournament_teams SET matches_played=0, wins=0, losses=0, ties=0, points=0 WHERE tournament_id=?", [id]);
-
-    // 3. Strip the Champion and reset the status
-    await pool.query("UPDATE tournaments SET status='ACTIVE', champion=NULL, runner_up=NULL, second_runner_up=NULL WHERE id=?", [id]);
-
-    res.redirect(`/manage-tournaments/${id}`);
-  } catch (err) {
-    console.error("RESET ERROR:", err);
-    res.redirect(`/manage-tournaments/${id}`);
-  }
-});
-
-
-/* =========================
-   EDIT MATCHUP / SWAP TBDs (CREATOR ONLY)
-========================= */
-app.post("/matches/:id/edit-teams", async (req, res) => {
-  if (!req.isAuthenticated()) return res.redirect("/login");
-  const { id } = req.params;
-  const { teamA, teamB } = req.body;
-
-  try {
-    const [matchResult] = await pool.query(`
-      SELECT m.tournament_id, t.created_by 
-      FROM tournament_matches m
-      JOIN tournaments t ON m.tournament_id = t.id
-      WHERE m.id = ?
-    `, [id]);
-
-    if (matchResult.length === 0) return res.redirect("/manage-tournaments");
-
-    if (matchResult[0].created_by !== req.user.id && !req.user.is_admin) {
-      return res.status(403).send("Unauthorized action.");
-    }
-
-    // Override the teams in this match
-    await pool.query("UPDATE tournament_matches SET teama=?, teamb=? WHERE id=?", [teamA, teamB, id]);
-
-    res.redirect(`/manage-tournaments/${matchResult[0].tournament_id}`);
-  } catch (err) {
-    console.error("EDIT MATCH ERROR:", err);
-    res.redirect("/manage-tournaments");
-  }
-});
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* =========================
-   GLOBAL STANDINGS & SCHEDULE
-========================= */
-app.get("/standings", async (req, res) => {
-  try {
-    // 1. Fetch all tournaments to build the top navigation tabs
-    const [tournaments] = await pool.query("SELECT * FROM tournaments ORDER BY id DESC");
-
-    // 2. Fetch ALL matches across the entire platform, joining the tournament name
-    // (Your EJS explicitly looks for 'm.tournament_name')
-    const [allMatches] = await pool.query(`
-      SELECT m.*, t.name AS tournament_name 
-      FROM tournament_matches m
-      JOIN tournaments t ON m.tournament_id = t.id
-      ORDER BY m.id ASC
-    `);
-
-    // 3. Group matches by their tournament_id into a dictionary object
-    // (This feeds the "matchesByTournament[t.id]" logic in your EJS)
-    const matchesByTournament = {};
-    allMatches.forEach(match => {
-      if (!matchesByTournament[match.tournament_id]) {
-        matchesByTournament[match.tournament_id] = [];
-      }
-      matchesByTournament[match.tournament_id].push(match);
+    res.render("pages/live", {
+      matchId,
+      match,
+      teamAPlayers,
+      teamBPlayers
     });
-
-    // 4. Calculate total matches for the header counter
-    const totalMatches = allMatches.length;
-
-    // 5. Render the page and inject the data!
-    res.render("pages/standings", {
-      user: req.user, // Crucial so your Navbar partial doesn't break
-      tournaments,
-      allMatches,
-      matchesByTournament,
-      totalMatches
-    });
-
   } catch (err) {
-    console.error("STANDINGS PAGE ERROR:", err);
-    res.redirect("/");
+    console.log("LIVE PAGE ERROR:", err);
+    res.send("Error loading live page");
   }
 });
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* =========================
-   SOCKET.IO SCORING ENGINE
-========================= */
+// --- Socket.io & Server Start ---
 const httpServer = createServer(app);
 const io = new Server(httpServer);
 
