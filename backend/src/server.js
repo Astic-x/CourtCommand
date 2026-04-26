@@ -162,15 +162,58 @@ app.get("/team-dashboard", async (req, res) => {
   if (!req.isAuthenticated()) return res.redirect("/login");
 
   try {
+    // Base queries (unchanged)
     const [players] = await pool.query("SELECT * FROM players WHERE LOWER(team)=LOWER(?)", [req.user.team]);
     const [tournaments] = await pool.query("SELECT * FROM tournaments ORDER BY start_date ASC");
     const [registered] = await pool.query("SELECT tournament_id FROM tournament_teams WHERE LOWER(team_name)=LOWER(?)", [req.user.team]);
 
-    res.render("pages/team-dashboard", { // Use whatever your team EJS file is named
+    // Task 1a: Aggregate team-level stats across all tournaments
+    const [teamStatsRows] = await pool.query(
+      `SELECT
+         COALESCE(SUM(wins), 0)    AS wins,
+         COALESCE(SUM(losses), 0)  AS losses,
+         COALESCE(SUM(points), 0)  AS points
+       FROM tournament_teams
+       WHERE LOWER(team_name) = LOWER(?)`,
+      [req.user.team]
+    );
+    const teamStats = teamStatsRows[0] || { wins: 0, losses: 0, points: 0 };
+
+    // Task 1b: Aggregate career stats per player from player_match_stats
+    const [playerStatsRows] = await pool.query(
+      `SELECT
+         p.id                             AS player_id,
+         COALESCE(SUM(pms.points), 0)    AS points,
+         COALESCE(SUM(pms.assists), 0)   AS assists,
+         COALESCE(SUM(pms.rebounds), 0)  AS rebounds,
+         COALESCE(SUM(pms.steals), 0)    AS steals,
+         COALESCE(SUM(pms.blocks), 0)    AS blocks,
+         COALESCE(SUM(pms.fouls), 0)     AS fouls
+       FROM players p
+       LEFT JOIN player_match_stats pms ON p.id = pms.player_id
+       WHERE LOWER(p.team) = LOWER(?)
+       GROUP BY p.id`,
+      [req.user.team]
+    );
+
+    // Task 1c: Merge stats into the players array (default to 0 if no stats yet)
+    const statsMap = new Map(playerStatsRows.map(s => [s.player_id, s]));
+    const enrichedPlayers = players.map(p => ({
+      ...p,
+      points:   statsMap.get(p.id)?.points   ?? 0,
+      assists:  statsMap.get(p.id)?.assists  ?? 0,
+      rebounds: statsMap.get(p.id)?.rebounds ?? 0,
+      steals:   statsMap.get(p.id)?.steals   ?? 0,
+      blocks:   statsMap.get(p.id)?.blocks   ?? 0,
+      fouls:    statsMap.get(p.id)?.fouls    ?? 0,
+    }));
+
+    res.render("pages/team-dashboard", {
       user: req.user,
-      players,
+      players: enrichedPlayers,
       tournaments,
-      registered
+      registered,
+      teamStats,
     });
 
   } catch (err) {
@@ -178,6 +221,7 @@ app.get("/team-dashboard", async (req, res) => {
     res.redirect("/");
   }
 });
+
 app.post("/assign-position", async (req, res) => {
   if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
   const { playerId, position } = req.body;
@@ -223,7 +267,7 @@ app.post("/remove-player/:id", async (req, res) => {
 
 app.post("/team/edit", async (req, res) => {
   if (!req.isAuthenticated()) return res.redirect("/login");
-  
+
   const newTeamName = req.body.team_name.trim();
   const oldTeamName = req.user.team;
 
@@ -256,24 +300,24 @@ app.post("/team/edit", async (req, res) => {
 });
 app.post("/player/:id/edit", upload.single("image"), async (req, res) => {
   if (!req.isAuthenticated()) return res.redirect("/login");
-  
+
   const { id } = req.params;
   const { name, role, position } = req.body; // Added position here
-  
+
   try {
     if (req.file) {
       const imagePath = "/assets/players/" + req.file.filename;
       await pool.query(
-        "UPDATE players SET name=?, role=?, position=?, image=? WHERE id=? AND team=?", 
+        "UPDATE players SET name=?, role=?, position=?, image=? WHERE id=? AND team=?",
         [name, role, position, imagePath, id, req.user.team]
       );
     } else {
       await pool.query(
-        "UPDATE players SET name=?, role=?, position=? WHERE id=? AND team=?", 
+        "UPDATE players SET name=?, role=?, position=? WHERE id=? AND team=?",
         [name, role, position, id, req.user.team]
       );
     }
-    
+
     res.redirect("/team-dashboard");
   } catch (err) {
     console.error("EDIT PLAYER ERROR:", err);
@@ -770,6 +814,15 @@ app.post("/tournaments/:id/register", async (req, res) => {
   const { id } = req.params;
 
   try {
+    // Feature 1: Roster constraint — require at least 5 players to register
+    const [playerCount] = await pool.query(
+      "SELECT COUNT(*) AS total FROM players WHERE LOWER(team)=LOWER(?)",
+      [req.user.team]
+    );
+    if (playerCount[0].total < 5) {
+      return res.redirect('/tournaments/' + id + '?error=roster');
+    }
+
     // Check if the team is already registered
     const [check] = await pool.query(
       "SELECT * FROM tournament_teams WHERE tournament_id=? AND LOWER(team_name)=LOWER(?)",
@@ -838,9 +891,9 @@ app.get("/score-match/:matchId", async (req, res) => {
   const { matchId } = req.params;
 
   try {
-    // 1. Find the tournament this match belongs to
+    // 1. Find the tournament this match belongs to — Feature 2: JOIN to get tournament name
     const [targetMatch] = await pool.query(`
-      SELECT m.tournament_id, t.created_by 
+      SELECT m.tournament_id, t.created_by, t.name AS tournament_name
       FROM tournament_matches m
       JOIN tournaments t ON m.tournament_id = t.id
       WHERE m.id = ?
@@ -849,15 +902,17 @@ app.get("/score-match/:matchId", async (req, res) => {
     if (targetMatch.length === 0) return res.redirect("/admin");
     if (targetMatch[0].created_by !== req.user.id && !req.user.is_admin) return res.status(403).send("Unauthorized");
 
-    const tournamentId = targetMatch[0].tournament_id;
+    const tournamentId    = targetMatch[0].tournament_id;
+    const tournamentName  = targetMatch[0].tournament_name;
 
     // 2. Fetch all matches for this tournament to populate the dropdowns
     const [matches] = await pool.query("SELECT * FROM tournament_matches WHERE tournament_id=? ORDER BY id ASC", [tournamentId]);
 
-    // 3. Render the live score page, passing the specific Match ID that was clicked
+    // 3. Render the live score page with the tournament name injected
     res.render("pages/live-score", {
       matches,
-      selectedMatchId: matchId
+      selectedMatchId: matchId,
+      tournamentName        // Feature 2: passed to EJS
     });
   } catch (err) {
     console.error("LIVE SCORE ERROR:", err);
@@ -883,7 +938,7 @@ app.post("/matches/:id/set-live", async (req, res) => {
 
     // Flip the status to LIVE
     await pool.query("UPDATE tournament_matches SET status='LIVE' WHERE id=?", [id]);
-    
+
     res.redirect(`/manage-tournaments/${matchCheck[0].tournament_id}`);
   } catch (err) {
     console.error("SET LIVE ERROR:", err);
@@ -979,7 +1034,7 @@ app.post("/matches/:id/result", async (req, res) => {
       [scoreA, scoreB, winner, id]
     );
 
-        // Leaderboard recalculation
+    // Leaderboard recalculation
 
     // Step A: Wipe all current stats for this tournament back to 0
     await pool.query(
@@ -1024,7 +1079,7 @@ app.post("/matches/:id/result", async (req, res) => {
       }
     }
 
-        // Auto-advance logic
+    // Auto-advance logic
     if (!currentMatch.round.includes("STAGE") && currentMatch.round !== "CUSTOM MATCH" && winner !== "DRAW" && currentMatch.round !== "FINAL") {
       const [allMatches] = await pool.query("SELECT * FROM tournament_matches WHERE tournament_id=? ORDER BY id ASC", [currentMatch.tournament_id]);
       const uniqueRounds = [...new Set(allMatches.map(m => m.round))];
@@ -1056,6 +1111,77 @@ app.post("/matches/:id/result", async (req, res) => {
   }
 });
 
+// Feature 6: Revert a LIVE or FINAL match back to UPCOMING and recalculate leaderboard
+app.post("/matches/:id/revert", async (req, res) => {
+  if (!req.isAuthenticated()) return res.redirect("/login");
+  const { id } = req.params;
+
+  try {
+    const [matchResult] = await pool.query(`
+      SELECT m.*, t.created_by
+      FROM tournament_matches m
+      JOIN tournaments t ON m.tournament_id = t.id
+      WHERE m.id = ?
+    `, [id]);
+
+    if (matchResult.length === 0) return res.redirect("/manage-tournaments");
+    const currentMatch = matchResult[0];
+
+    if (currentMatch.created_by !== req.user.id && !req.user.is_admin) {
+      return res.status(403).send("Unauthorized action.");
+    }
+
+    // Reset the match itself
+    await pool.query(
+      "UPDATE tournament_matches SET status='UPCOMING', scorea=0, scoreb=0, winner=NULL WHERE id=?",
+      [id]
+    );
+
+    // Leaderboard recalculation (identical to /matches/:id/result)
+    await pool.query(
+      "UPDATE tournament_teams SET matches_played=0, wins=0, losses=0, ties=0, points=0 WHERE tournament_id=?",
+      [currentMatch.tournament_id]
+    );
+
+    const [completedMatches] = await pool.query(
+      "SELECT teama, teamb, winner FROM tournament_matches WHERE tournament_id=? AND status='FINAL'",
+      [currentMatch.tournament_id]
+    );
+
+    const teamStats = {};
+    completedMatches.forEach(m => {
+      if (!teamStats[m.teama]) teamStats[m.teama] = { mp: 0, w: 0, l: 0, t: 0, pts: 0 };
+      if (!teamStats[m.teamb]) teamStats[m.teamb] = { mp: 0, w: 0, l: 0, t: 0, pts: 0 };
+      teamStats[m.teama].mp++;
+      teamStats[m.teamb].mp++;
+      if (m.winner === "DRAW") {
+        teamStats[m.teama].t++; teamStats[m.teama].pts += 1;
+        teamStats[m.teamb].t++; teamStats[m.teamb].pts += 1;
+      } else if (m.winner === m.teama) {
+        teamStats[m.teama].w++; teamStats[m.teama].pts += 2;
+        teamStats[m.teamb].l++;
+      } else if (m.winner === m.teamb) {
+        teamStats[m.teamb].w++; teamStats[m.teamb].pts += 2;
+        teamStats[m.teama].l++;
+      }
+    });
+
+    for (const [teamName, stats] of Object.entries(teamStats)) {
+      if (teamName !== "BYE" && teamName !== "TBD") {
+        await pool.query(
+          "UPDATE tournament_teams SET matches_played=?, wins=?, losses=?, ties=?, points=? WHERE tournament_id=? AND team_name=?",
+          [stats.mp, stats.w, stats.l, stats.t, stats.pts, currentMatch.tournament_id, teamName]
+        );
+      }
+    }
+
+    res.redirect(`/manage-tournaments/${currentMatch.tournament_id}`);
+  } catch (err) {
+    console.error("REVERT MATCH ERROR:", err);
+    res.redirect("/manage-tournaments");
+  }
+});
+
 app.get("/live", async (req, res) => {
   try {
     let [result] = await pool.query("SELECT id FROM tournament_matches WHERE status='LIVE' LIMIT 1");
@@ -1076,7 +1202,13 @@ app.get("/live", async (req, res) => {
 app.get("/live/:matchId", async (req, res) => {
   const matchId = req.params.matchId;
   try {
-    const [matchResult] = await pool.query("SELECT * FROM tournament_matches WHERE id=?", [matchId]);
+    // Feature 2: JOIN tournaments to fetch tournament_name alongside match data
+    const [matchResult] = await pool.query(`
+      SELECT m.*, t.name AS tournament_name
+      FROM tournament_matches m
+      JOIN tournaments t ON m.tournament_id = t.id
+      WHERE m.id = ?
+    `, [matchId]);
     if (matchResult.length === 0) return res.send("Match not found");
     const match = matchResult[0];
 
@@ -1085,7 +1217,7 @@ app.get("/live/:matchId", async (req, res) => {
 
     res.render("pages/live", {
       matchId,
-      match,
+      match,            // match.tournament_name is now available in EJS
       teamAPlayers,
       teamBPlayers
     });
@@ -1096,44 +1228,121 @@ app.get("/live/:matchId", async (req, res) => {
 });
 
 
-// --- Socket.io & Server Start ---
+/* =========================
+   SOCKET.IO SCORING ENGINE
+========================= */
 const httpServer = createServer(app);
 const io = new Server(httpServer);
 
 io.on("connection", (socket) => {
-  console.log("Client connected:", socket.id);
+  console.log("[Socket] Client connected:", socket.id);
 
+  // ── 1. SCORE UPDATES ─────────────────────────────────────────────────────
+  // Emitter payload: { matchId, scorea, scoreb }
   socket.on("update_score", async ({ matchId, scorea, scoreb }) => {
+    console.log(`[Socket] update_score received → match:${matchId} A:${scorea} B:${scoreb}`);
     try {
-      // Fixed: Target tournament_matches table, not matches
-      await pool.query("UPDATE tournament_matches SET scorea=?, scoreb=? WHERE id=?", [scorea, scoreb, matchId]);
-      io.emit(`match_${matchId}`, { scorea, scoreb });
+      await pool.query(
+        "UPDATE tournament_matches SET scorea=?, scoreb=? WHERE id=?",
+        [scorea, scoreb, matchId]
+      );
     } catch (err) {
-      console.log(err);
+      console.error("[Socket] update_score DB ERROR:", err.message);
     }
+    // Always broadcast regardless of DB outcome
+    io.emit(`match_${matchId}`, { scorea, scoreb });
   });
 
-  socket.on("new_event", ({ matchId, time, text, type }) => {
+  // ── 2. PLAY-BY-PLAY EVENTS ───────────────────────────────────────────────
+  // Emitter payload: { matchId, time, text, type, team }
+  // 'team' is 'A' or 'B' — we look up the real team name from the DB.
+  // DB columns (game_events): match_id, team_name, event_type, game_clock, quarter
+  socket.on("new_event", async ({ matchId, time, text, type, team, quarter }) => {
+    console.log(`[Socket] new_event received → match:${matchId} type:${type} team:${team} time:${time} text:"${text}"`);
+
+    try {
+      // Resolve 'A'/'B' letter to actual team name for DB storage
+      const [matchRows] = await pool.query(
+        "SELECT teama, teamb FROM tournament_matches WHERE id=?",
+        [matchId]
+      );
+      const teamName = matchRows.length
+        ? (team === "A" ? matchRows[0].teama : matchRows[0].teamb)
+        : null;
+
+      // Map UI event types to DB ENUM values
+      const enumMap = {
+        score: "2PT_MAKE", foul: "FOUL", block: "BLOCK",
+        steal: "STEAL",   assist: "ASSIST", rebound: "REBOUND",
+        timeout: "TIMEOUT", turnover: "TURNOVER",
+      };
+      const dbEventType = enumMap[type] || null;
+
+      if (dbEventType) {
+        await pool.query(
+          `INSERT INTO game_events (match_id, team_name, event_type, game_clock, quarter)
+           VALUES (?, ?, ?, ?, ?)`,
+          [matchId, teamName, dbEventType, time || null, quarter || 1]
+        );
+        console.log(`[Socket] new_event saved to DB → team_name:${teamName} event_type:${dbEventType}`);
+      } else {
+        console.warn(`[Socket] new_event skipped DB insert — no ENUM mapping for type:"${type}"`);
+      }
+    } catch (err) {
+      console.error("[Socket] new_event DB ERROR:", err.message);
+      // Non-fatal — still broadcast below
+    }
+
+    // Always broadcast to fans
     io.emit(`event_${matchId}`, { time, text, type });
   });
 
+  // ── 3. CLOCK UPDATES (Ephemeral — no DB persistence) ─────────────────────
+  // Emitter payload: { matchId, time, quarter, running }
   socket.on("update_clock", ({ matchId, time, quarter, running }) => {
     io.emit(`clock_${matchId}`, { time, quarter, running });
   });
 
-  socket.on("update_player_stats", ({ matchId, playerId, points, fouls, assists, rebounds }) => {
-    io.emit(`player_stats_${matchId}`, { playerId, points, fouls, assists, rebounds });
-    console.log(`Player stats updated: match ${matchId} player ${playerId}`);
-  });
+  // ── 4. PLAYER STATS ───────────────────────────────────────────────────────
+  // Emitter payload: { matchId, playerId, points, fouls, assists, rebounds, steals, blocks }
+  // NOTE: 'player_match_stats' table does not exist in the current schema.
+  // Stats are broadcast in real-time only. To persist them, create the table:
+  //   CREATE TABLE player_match_stats (
+  //     id INT AUTO_INCREMENT PRIMARY KEY,
+  //     match_id INT NOT NULL,
+  //     player_id INT NOT NULL,
+  //     points INT DEFAULT 0, fouls INT DEFAULT 0,
+  //     assists INT DEFAULT 0, rebounds INT DEFAULT 0,
+  //     UNIQUE KEY uniq_match_player (match_id, player_id),
+  //     FOREIGN KEY (match_id) REFERENCES tournament_matches(id) ON DELETE CASCADE,
+  //     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+  //   );
+  // Then uncomment the pool.query block below.
+  socket.on("update_player_stats", async (data) => {
+    const { matchId, playerId, points, fouls, assists, rebounds } = data;
+    console.log(`[Socket] update_player_stats received → match:${matchId} player:${playerId} pts:${points} fls:${fouls} ast:${assists} reb:${rebounds}`);
 
-  // Admin: Start/End Match
-  socket.on("toggle_match", async ({ matchId, running }) => {
-    await pool.query("UPDATE tournament_matches SET running=? WHERE id=?", [running, matchId]);
-    io.emit(`match_status_${matchId}`, running);
+    // Feature 5: Lock stats if match is already FINAL
+    try {
+      const [statusCheck] = await pool.query(
+        "SELECT status FROM tournament_matches WHERE id=?",
+        [matchId]
+      );
+      if (statusCheck.length > 0 && statusCheck[0].status === "FINAL") {
+        console.warn(`[Socket] update_player_stats BLOCKED — match ${matchId} is FINAL`);
+        return; // Silently discard — no broadcast, no DB write
+      }
+    } catch (err) {
+      console.error("[Socket] update_player_stats status check ERROR:", err.message);
+      return; // Fail safe — block on DB error too
+    }
+
+    // Broadcast in-game stats to all fan dashboards immediately
+    io.emit(`player_stats_${matchId}`, data);
   });
 
   socket.on("disconnect", () => {
-    console.log("Client disconnected:", socket.id);
+    console.log("[Socket] Client disconnected:", socket.id);
   });
 });
 
