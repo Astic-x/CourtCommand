@@ -4,68 +4,76 @@
     <title>CourtCommand AI</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
-<div class="container">
-    <h1>CourtCommand AI</h1>
+<div class="page">
 
-    <form id="form">
+    <h1 class="title">CourtCommand AI</h1>
 
-        <h3>Home Team</h3>
-        <input id="home_fg" placeholder="FG %" required>
-        <input id="home_ft" placeholder="FT %" required>
-        <input id="home_tp" placeholder="3PT %" required>
-        <input id="home_ast" placeholder="Assists" required>
-        <input id="home_reb" placeholder="Rebounds" required>
+    <div class="teams-container">
 
-        <h3>Away Team</h3>
-        <input id="away_fg" placeholder="FG %" required>
-        <input id="away_ft" placeholder="FT %" required>
-        <input id="away_tp" placeholder="3PT %" required>
-        <input id="away_ast" placeholder="Assists" required>
-        <input id="away_reb" placeholder="Rebounds" required>
+        <!-- HOME TEAM -->
+        <div class="team-card">
+            <h2>HOME TEAM</h2>
 
-        <button>Predict</button>
-    </form>
+            <input id="home_fg" placeholder="FG% (0.45)">
+            <input id="home_ft" placeholder="FT% (0.75)">
+            <input id="home_tp" placeholder="3PT% (0.35)">
+            <input id="home_ast" placeholder="Assists">
+            <input id="home_reb" placeholder="Rebounds">
+        </div>
 
-    <div class="card">
-        <h2>Result</h2>
-        <div id="result">Waiting...</div>
+        <!-- AWAY TEAM -->
+        <div class="team-card">
+            <h2>AWAY TEAM</h2>
+
+            <input id="away_fg" placeholder="FG%">
+            <input id="away_ft" placeholder="FT%">
+            <input id="away_tp" placeholder="3PT%">
+            <input id="away_ast" placeholder="Assists">
+            <input id="away_reb" placeholder="Rebounds">
+        </div>
+
     </div>
+
+    <button onclick="predict()" class="btn">ANALYZE MATCH</button>
+
+    <div id="result" class="result-box"></div>
+
+    <div id="drills" class="drill-box"></div>
+
 </div>
 
 <script>
-document.getElementById("form").addEventListener("submit", function(e){
-    e.preventDefault();
+function predict(){
+    fetch("http://127.0.0.1:5000/predict",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+            home_fg:parseFloat(home_fg.value),
+            home_ft:parseFloat(home_ft.value),
+            home_tp:parseFloat(home_tp.value),
+            home_ast:parseFloat(home_ast.value),
+            home_reb:parseFloat(home_reb.value),
 
-    fetch("http://127.0.0.1:5000/predict", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-            home_fg: parseFloat(home_fg.value),
-            home_ft: parseFloat(home_ft.value),
-            home_tp: parseFloat(home_tp.value),
-            home_ast: parseFloat(home_ast.value),
-            home_reb: parseFloat(home_reb.value),
-
-            away_fg: parseFloat(away_fg.value),
-            away_ft: parseFloat(away_ft.value),
-            away_tp: parseFloat(away_tp.value),
-            away_ast: parseFloat(away_ast.value),
-            away_reb: parseFloat(away_reb.value)
+            away_fg:parseFloat(away_fg.value),
+            away_ft:parseFloat(away_ft.value),
+            away_tp:parseFloat(away_tp.value),
+            away_ast:parseFloat(away_ast.value),
+            away_reb:parseFloat(away_reb.value)
         })
     })
-    .then(res => res.json())
-    .then(data => {
-        result.innerHTML = `
-            <b>${data.winner}</b><br>
-            Confidence: ${data.confidence}
-        `;
+    .then(res=>res.json())
+    .then(data=>{
+        document.getElementById("result").innerHTML =
+            `<h2>${data.winner} WILL WIN</h2>
+             <p>Team to improve: ${data.losing_team}</p>`;
+
+        document.getElementById("drills").innerHTML =
+            data.drills.map(d=>`<div class="drill">${d}</div>`).join('');
     })
-    .catch(() => {
-        result.innerHTML = "Error connecting backend";
-    });
-});
+}
 </script>
 
 </body>
