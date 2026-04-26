@@ -208,12 +208,56 @@ app.get("/team-dashboard", async (req, res) => {
       fouls:    statsMap.get(p.id)?.fouls    ?? 0,
     }));
 
+    // ── Match History queries ──────────────────────────────────────────────
+    // Run all three in parallel; all wrapped by the outer try/catch
+    const [[teamMatchRows], [matchStatRows], [gameEventRows]] = await Promise.all([
+
+      // 1. Every match this team has played, with tournament name
+      pool.query(
+        `SELECT m.*, t.name AS tournament_name
+         FROM tournament_matches m
+         LEFT JOIN tournaments t ON m.tournament_id = t.id
+         WHERE m.teama = ? OR m.teamb = ?
+         ORDER BY m.match_date DESC`,
+        [req.user.team, req.user.team]
+      ),
+
+      // 2. Box-score rows for every player on this team
+      pool.query(
+        `SELECT pms.*, p.name
+         FROM player_match_stats pms
+         JOIN players p ON pms.player_id = p.id
+         WHERE p.team = ?`,
+        [req.user.team]
+      ),
+
+      // 3. All play-by-play events for those matches
+      pool.query(
+        `SELECT e.*, p.name as player_name 
+         FROM game_events e
+         LEFT JOIN players p ON e.player_id = p.id
+         WHERE e.match_id IN (
+           SELECT id FROM tournament_matches WHERE teama = ? OR teamb = ?
+         )
+         ORDER BY e.created_at DESC`,
+        [req.user.team, req.user.team]
+      ),
+    ]);
+
+    // Attach box scores + events to each match object
+    teamMatchRows.forEach(m => {
+      m.boxScore = matchStatRows.filter(s => s.match_id === m.id);
+      m.events   = gameEventRows.filter(e => e.match_id === m.id);
+    });
+    // ── End Match History ──────────────────────────────────────────────────
+
     res.render("pages/team-dashboard", {
       user: req.user,
       players: enrichedPlayers,
       tournaments,
       registered,
       teamStats,
+      teamMatches: teamMatchRows,   // ← new
     });
 
   } catch (err) {
