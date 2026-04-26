@@ -74,9 +74,9 @@ body { background: var(--bg); font-family: 'Inter', sans-serif; color: var(--txt
 .today-tag { font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 600; color: #000; background: var(--gold); padding: 2px 8px; border-radius: 4px; }
 
 /* MATCH CARD */
-.mc { background: var(--card); border-radius: 8px; margin-bottom: 4px; overflow: hidden; border: 1px solid var(--line); transition: background 0.15s, border-color 0.15s; position: relative; animation: up 0.25s ease both; }
+.mc { background: var(--card); border-radius: 8px; margin-bottom: 4px; overflow: hidden; border: 1px solid var(--line); transition: all 0.2s ease; position: relative; animation: up 0.25s ease both; cursor: pointer; }
 @keyframes up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-.mc:hover { background: var(--card-h); border-color: var(--line2); }
+.mc:hover { background: var(--card-h); border-color: var(--line2); transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.4); }
 .mc::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; }
 .mc.live::before     { background: var(--live); }
 .mc.final::before    { background: var(--final); }
@@ -172,7 +172,7 @@ body { background: var(--bg); font-family: 'Inter', sans-serif; color: var(--txt
             <div class="r-head-line"></div>
           </div>
         <%}%>
-        <div class="mc <%=st%>" data-status="<%=st%>">
+        <div class="mc <%=st%>" data-status="<%=st%>" onclick="window.location.href='/live/<%= m.id %>'">
           <div class="mc-inner">
             <div class="mc-teams">
               <div class="mc-row">
@@ -225,7 +225,7 @@ body { background: var(--bg); font-family: 'Inter', sans-serif; color: var(--txt
               <div class="r-head-line"></div>
             </div>
           <%}%>
-          <div class="mc <%=st%>" data-status="<%=st%>">
+          <div class="mc <%=st%>" data-status="<%=st%>" onclick="window.location.href='/live/<%= m.id %>'">
             <div class="mc-inner">
               <div class="mc-teams">
                 <div class="mc-row">

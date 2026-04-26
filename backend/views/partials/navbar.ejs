@@ -4,20 +4,20 @@
     <a href="/">Home</a>
     <a href="/tournaments">Tournaments</a>
 
-    <% if (user && user.is_admin) { %>
-      <a href="/admin">Admin</a>
+    <% if (user) { %>
+      <a href="/manage-tournaments">Your Tournaments</a>
     <% } %>
   </nav>
 
-  <div class="logo">Court<span>X</span></div>
+  <div class="logo">Court<span>Command</span></div>
 
  <nav class="nav-right">
 
   <a href="/standings">Standings</a>
   <a href="/news">News</a>
 
-  <% if (user && !user.is_admin) { %>
-    <a href="/dashboard">Dashboard</a>
+  <% if (user) { %>
+    <a href="/team-dashboard">Team Dashboard</a>
     <a href="/logout" class="signin">Logout</a>
   <% } else if (user && user.is_admin) { %>
     <a href="/logout" class="signin">Logout</a>
