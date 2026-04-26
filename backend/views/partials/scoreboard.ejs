@@ -6,8 +6,12 @@
       <a href="/live/<%= match.id %>" class="match-card">
 
         <div class="match-date">
-          <%= new Date(match.match_date).toLocaleDateString('en-IN', { weekday: 'short' , day: 'numeric' ,
-            month: 'short' }) %>
+          <% if (match.match_date) { %>
+            <%= new Date(match.match_date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric',
+              month: 'short' }) %>
+          <% } else { %>
+            Live Now
+          <% } %>
         </div>
 
         <div class="team-row">
