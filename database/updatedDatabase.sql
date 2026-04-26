@@ -38,7 +38,7 @@ CREATE TABLE `game_events` (
   KEY `player_id` (`player_id`),
   CONSTRAINT `game_events_ibfk_1` FOREIGN KEY (`match_id`) REFERENCES `tournament_matches` (`id`) ON DELETE CASCADE,
   CONSTRAINT `game_events_ibfk_2` FOREIGN KEY (`player_id`) REFERENCES `players` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -47,7 +47,7 @@ CREATE TABLE `game_events` (
 
 LOCK TABLES `game_events` WRITE;
 /*!40000 ALTER TABLE `game_events` DISABLE KEYS */;
-INSERT INTO `game_events` VALUES (1,9,'SEC',17,'2PT_MAKE','11:45',1,'2026-03-22 06:44:20'),(2,9,'sasd',28,'FOUL','11:30',1,'2026-03-22 06:44:20');
+INSERT INTO `game_events` VALUES (1,9,'SEC',17,'2PT_MAKE','11:45',1,'2026-03-22 06:44:20'),(2,9,'sasd',28,'FOUL','11:30',1,'2026-03-22 06:44:20'),(28,224,'sasd',NULL,'REBOUND','09:39',1,'2026-04-26 17:24:23'),(29,224,'sasd',NULL,'2PT_MAKE','09:33',1,'2026-04-26 17:24:29');
 /*!40000 ALTER TABLE `game_events` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -65,6 +65,8 @@ CREATE TABLE `player_match_stats` (
   `fouls` int DEFAULT '0',
   `assists` int DEFAULT '0',
   `rebounds` int DEFAULT '0',
+  `steals` int DEFAULT '0',
+  `blocks` int DEFAULT '0',
   PRIMARY KEY (`match_id`,`player_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -127,7 +129,7 @@ CREATE TABLE `tournament_matches` (
   PRIMARY KEY (`id`),
   KEY `tournament_id` (`tournament_id`),
   CONSTRAINT `tournament_matches_ibfk_1` FOREIGN KEY (`tournament_id`) REFERENCES `tournaments` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=207 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=229 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -136,7 +138,7 @@ CREATE TABLE `tournament_matches` (
 
 LOCK TABLES `tournament_matches` WRITE;
 /*!40000 ALTER TABLE `tournament_matches` DISABLE KEYS */;
-INSERT INTO `tournament_matches` VALUES (8,5,'ank','vis',0,0,'UPCOMING',NULL,'SEMI FINAL',NULL),(9,5,'SEC','sasd',42,50,'LIVE',NULL,'SEMI FINAL',NULL),(192,7,'SEC','ank',50,45,'LIVE',NULL,'GROUP STAGE',NULL),(193,7,'SEC','sasd',0,0,'UPCOMING',NULL,'GROUP STAGE',NULL),(194,7,'SEC','Test squad 1',0,0,'LIVE',NULL,'GROUP STAGE',NULL),(195,7,'SEC','Test Squad',0,0,'UPCOMING',NULL,'GROUP STAGE',NULL),(196,7,'SEC','vis',0,0,'UPCOMING',NULL,'GROUP STAGE',NULL),(197,7,'ank','sasd',0,0,'UPCOMING',NULL,'GROUP STAGE',NULL),(198,7,'ank','Test squad 1',0,0,'UPCOMING',NULL,'GROUP STAGE',NULL),(199,7,'ank','Test Squad',0,0,'UPCOMING',NULL,'GROUP STAGE',NULL),(200,7,'ank','vis',0,0,'UPCOMING',NULL,'GROUP STAGE',NULL),(201,7,'sasd','Test squad 1',0,0,'UPCOMING',NULL,'GROUP STAGE',NULL),(202,7,'sasd','Test Squad',0,0,'UPCOMING',NULL,'GROUP STAGE',NULL),(203,7,'sasd','vis',0,0,'UPCOMING',NULL,'GROUP STAGE',NULL),(204,7,'Test squad 1','Test Squad',0,0,'UPCOMING',NULL,'GROUP STAGE',NULL),(205,7,'Test squad 1','vis',0,0,'UPCOMING',NULL,'GROUP STAGE',NULL),(206,7,'Test Squad','vis',0,0,'UPCOMING',NULL,'GROUP STAGE',NULL);
+INSERT INTO `tournament_matches` VALUES (8,5,'ank','vis',0,0,'UPCOMING',NULL,'SEMI FINAL',NULL),(9,5,'SEC','sasd',42,50,'LIVE',NULL,'SEMI FINAL',NULL),(222,7,'Test squad 1','BYE',0,0,'UPCOMING',NULL,'ROUND 1',NULL),(223,7,'ank','vis',0,0,'UPCOMING',NULL,'ROUND 1',NULL),(224,7,'sasd','Test Squad',6,0,'LIVE','2026-04-26','ROUND 1',NULL),(225,7,'SEC','BYE',0,0,'UPCOMING',NULL,'ROUND 1',NULL),(226,7,'Test squad 1','TBD',0,0,'UPCOMING',NULL,'SEMI FINAL',NULL),(227,7,'TBD','TBD',0,0,'UPCOMING',NULL,'SEMI FINAL',NULL),(228,7,'TBD','TBD',0,0,'UPCOMING',NULL,'FINAL',NULL);
 /*!40000 ALTER TABLE `tournament_matches` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -247,4 +249,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-04-26 20:44:37
+-- Dump completed on 2026-04-26 23:28:13
