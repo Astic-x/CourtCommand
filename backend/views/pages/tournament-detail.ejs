@@ -291,4 +291,12 @@
 
 </body>
 
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('error') === 'roster') {
+    alert('Your team must have at least 5 players to register for a tournament.');
+    window.history.replaceState(null, '', window.location.pathname);
+  }
+</script>
+
 </html>

@@ -65,12 +65,13 @@
         </div>
       </div>
 
+      <%# Task 2: Team Stats — values pulled from teamStats object passed by /team-dashboard route %>
       <h3 class="section-title">Team Stats</h3>
       <div class="stats-container">
-        <div class="stat-card"><h4>🏆 Wins</h4><p>12</p></div>
-        <div class="stat-card"><h4>❌ Losses</h4><p>3</p></div>
-        <div class="stat-card"><h4>🏀 Points</h4><p>945</p></div>
-        <div class="stat-card"><h4>📈 Rank</h4><p>#2</p></div>
+        <div class="stat-card"><h4>🏆 Wins</h4><p><%= teamStats.wins %></p></div>
+        <div class="stat-card"><h4>❌ Losses</h4><p><%= teamStats.losses %></p></div>
+        <div class="stat-card"><h4>🏀 Points</h4><p><%= teamStats.points %></p></div>
+        <div class="stat-card"><h4>📈 Rank</h4><p>#--</p></div>
       </div>
 
       <h3 class="section-title">Starting Lineup</h3>
@@ -124,6 +125,15 @@
             <% if(player.position){ %>
               <span class="player-position"><%= player.position %></span>
             <% } %>
+          </div>
+
+          <%# Task 3: Mini box-score row — aggregated career totals from player_match_stats %>
+          <div style="display:grid; grid-template-columns: repeat(5,1fr); gap:4px; margin-top:10px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.07); text-align:center;">
+            <div style="font-size:10px; color:#a0a5b8;">PTS<br><span style="font-size:14px; font-weight:700; color:#ff7a18;"><%= player.points %></span></div>
+            <div style="font-size:10px; color:#a0a5b8;">AST<br><span style="font-size:14px; font-weight:700; color:#ffffff;"><%= player.assists %></span></div>
+            <div style="font-size:10px; color:#a0a5b8;">REB<br><span style="font-size:14px; font-weight:700; color:#ffffff;"><%= player.rebounds %></span></div>
+            <div style="font-size:10px; color:#a0a5b8;">STL<br><span style="font-size:14px; font-weight:700; color:#ffffff;"><%= player.steals %></span></div>
+            <div style="font-size:10px; color:#a0a5b8;">BLK<br><span style="font-size:14px; font-weight:700; color:#ffffff;"><%= player.blocks %></span></div>
           </div>
         </div>
         <% }) %>
