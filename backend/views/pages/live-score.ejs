@@ -1,258 +1,1736 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-  <title>Admin Panel</title>
+  <meta charset="UTF-8">
+  <title>Admin Command Center</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap"
+    rel="stylesheet">
   <style>
-    body { background: #060810; color: white; font-family: sans-serif; padding: 40px; }
-    h1 { margin-bottom: 10px; }
-    .status { color: #00ffcc; margin-bottom: 20px; }
-    .admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; }
-    .card { background: #111827; padding: 25px; border-radius: 14px; border: 1px solid #1e2030; }
-    h2 { color: #ff7a18; margin-bottom: 10px; }
-    input, select { background: #0d1325; border: 1px solid #333; color: white; padding: 10px; border-radius: 8px; margin-top: 10px; width: 100%; box-sizing: border-box; }
-    button { background: #ff7a18; color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; margin-top: 12px; width: 100%; font-weight: bold; }
-    button:hover { background: #ff8f2f; }
-    .btn-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-    .btn-green  { background: #00c46a; } .btn-yellow { background: #f0a500; } .btn-red    { background: #e03e3e; }
-    .btn-green:hover  { background: #00d97a; } .btn-yellow:hover { background: #ffb820; } .btn-red:hover    { background: #f05050; }
-    .clock-display { font-size: 28px; font-weight: bold; text-align: center; margin-top: 14px; color: #00ffcc; letter-spacing: 3px; }
-    .clock-status { text-align: center; font-size: 12px; margin-top: 6px; color: #aaa; }
-    .score-display { margin-top: 10px; color: #aaa; }
-    .stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .stat-row input { margin-top: 0; }
-    label { font-size: 11px; color: #888; margin-top: 12px; display: block; }
-    .toast { position: fixed; bottom: 30px; right: 30px; background: #00c46a; color: white; padding: 12px 20px; border-radius: 8px; font-weight: bold; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
-    .toast.show { opacity: 1; }
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --bg: #0c0f14;
+      --surface: #13171f;
+      --surface2: #1a1f2a;
+      --surface3: #222836;
+      --border: rgba(255, 255, 255, 0.07);
+      --border-md: rgba(255, 255, 255, 0.12);
+      --text: #f0f2f5;
+      --muted: #6b7280;
+      --muted2: #9ca3af;
+      --accent: #f97316;
+      --accent-dim: rgba(249, 115, 22, 0.15);
+      --accent-border: rgba(249, 115, 22, 0.35);
+      --green: #22c55e;
+      --green-dim: rgba(34, 197, 94, 0.12);
+      --green-border: rgba(34, 197, 94, 0.3);
+      --yellow: #eab308;
+      --yellow-dim: rgba(234, 179, 8, 0.12);
+      --yellow-border: rgba(234, 179, 8, 0.3);
+      --red: #ef4444;
+      --red-dim: rgba(239, 68, 68, 0.12);
+      --red-border: rgba(239, 68, 68, 0.3);
+      --blue: #3b82f6;
+      --blue-dim: rgba(59, 130, 246, 0.12);
+      --blue-border: rgba(59, 130, 246, 0.3);
+      --purple: #a855f7;
+      --r: 10px;
+      --r-sm: 6px;
+    }
+
+    html,
+    body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      overflow: hidden
+    }
+
+    .app {
+      display: grid;
+      grid-template-rows: 52px 1fr;
+      height: 100vh
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      gap: 12px
+    }
+
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 16px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .logo-icon {
+      width: 26px;
+      height: 26px;
+      background: var(--accent);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+      color: #fff
+    }
+
+    .live-pill {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--green-dim);
+      border: 1px solid var(--green-border);
+      color: var(--green);
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse-g 1.5s infinite
+    }
+
+    @keyframes pulse-g {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: 0.4
+      }
+    }
+
+    .match-select-wrap {
+      flex: 1;
+      max-width: 340px
+    }
+
+    .match-select-wrap select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border-md);
+      color: var(--text);
+      padding: 7px 30px 7px 12px;
+      border-radius: var(--r-sm);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center
+    }
+
+    .match-select-wrap select:focus {
+      outline: none;
+      border-color: var(--accent-border)
+    }
+
+    .time-display {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      color: var(--muted2);
+      padding: 5px 10px;
+      background: var(--surface2);
+      border-radius: var(--r-sm);
+      border: 1px solid var(--border)
+    }
+
+    .main {
+      display: grid;
+      grid-template-columns: 220px 1fr 270px;
+      height: 100%;
+      overflow: hidden
+    }
+
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--surface3) transparent
+    }
+
+    .sidebar.right {
+      border-right: none;
+      border-left: 1px solid var(--border)
+    }
+
+    .panel-section {
+      border-bottom: 1px solid var(--border);
+      padding: 12px 14px
+    }
+
+    .section-label {
+      font-family: 'Syne', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border)
+    }
+
+    .center {
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      padding: 14px;
+      gap: 12px
+    }
+
+    /* SCOREBOARD */
+    .scoreboard {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden
+    }
+
+    .scoreboard-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2)
+    }
+
+    .sb-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px
+    }
+
+    /* SCORE COLUMNS */
+    .score-main {
+      display: grid;
+      grid-template-columns: 1fr 60px 1fr
+    }
+
+    .score-team-col {
+      padding: 16px 12px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px
+    }
+
+    .score-vs-col {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border)
+    }
+
+    .team-name-big {
+      font-family: 'Syne', sans-serif;
+      font-size: 14px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px
+    }
+
+    /* THE BIG SCORE — this is what updates */
+    .score-number {
+      font-family: 'DM Mono', monospace;
+      font-size: 72px;
+      font-weight: 500;
+      line-height: 1;
+      color: var(--text);
+      transition: color 0.15s;
+      min-width: 80px;
+      text-align: center;
+    }
+
+    .score-number.flash {
+      animation: flash-score 0.45s ease forwards
+    }
+
+    @keyframes flash-score {
+      0% {
+        transform: scale(1);
+        color: var(--text)
+      }
+
+      35% {
+        transform: scale(1.12);
+        color: var(--accent)
+      }
+
+      70% {
+        transform: scale(1.05);
+        color: var(--accent)
+      }
+
+      100% {
+        transform: scale(1);
+        color: var(--text)
+      }
+    }
+
+    /* manual row */
+    .manual-row {
+      display: flex;
+      gap: 6px;
+      width: 100%;
+      align-items: stretch
+    }
+
+    .manual-row input {
+      flex: 1;
+      min-width: 0;
+      text-align: center;
+      font-family: 'DM Mono', monospace;
+      font-size: 13px
+    }
+
+    .manual-row button {
+      flex-shrink: 0;
+      white-space: nowrap;
+      padding: 8px 10px;
+      font-size: 12px
+    }
+
+    .pts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 5px;
+      width: 100%
+    }
+
+    .pts-grid button {
+      padding: 9px 0;
+      font-size: 14px;
+      font-weight: 700
+    }
+
+    .pts-grid button:hover {
+      background: var(--accent-dim);
+      border-color: var(--accent-border);
+      color: var(--accent)
+    }
+
+    .undo-btn {
+      width: 100%;
+      font-size: 11px;
+      color: var(--muted2);
+      border: none;
+      background: transparent;
+      padding: 3px 0;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif
+    }
+
+    .undo-btn:hover {
+      color: var(--red)
+    }
+
+    .broadcast-bar {
+      padding: 12px 14px;
+      border-top: 1px solid var(--border);
+      background: var(--surface2);
+      display: flex;
+      gap: 8px
+    }
+
+    /* CLOCK */
+    .clock-display-wrap {
+      background: var(--surface2);
+      border-radius: var(--r-sm);
+      padding: 14px 10px 10px;
+      text-align: center
+    }
+
+    .clock-big {
+      font-family: 'DM Mono', monospace;
+      font-size: 46px;
+      font-weight: 500;
+      letter-spacing: 3px;
+      line-height: 1
+    }
+
+    .clock-big.running {
+      color: var(--green)
+    }
+
+    .clock-big.paused {
+      color: var(--yellow)
+    }
+
+    .clock-big.stopped {
+      color: var(--text)
+    }
+
+    .clock-status-txt {
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 4px;
+      margin-bottom: 12px;
+      font-weight: 700
+    }
+
+    .quarter-tabs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+      margin-bottom: 8px
+    }
+
+    .q-tab {
+      padding: 6px 0;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: 'Syne', sans-serif;
+      border: 1px solid var(--border-md);
+      border-radius: 4px;
+      background: var(--surface3);
+      color: var(--muted2);
+      cursor: pointer;
+      transition: all 0.15s
+    }
+
+    .q-tab:hover {
+      border-color: var(--accent-border);
+      color: var(--accent)
+    }
+
+    .q-tab.active {
+      background: var(--accent-dim);
+      border-color: var(--accent-border);
+      color: var(--accent)
+    }
+
+    .clock-set-row {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 7px
+    }
+
+    .clock-set-row input {
+      flex: 1;
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      padding: 7px 8px
+    }
+
+    .clock-set-row button {
+      flex-shrink: 0;
+      padding: 7px 10px;
+      font-size: 12px
+    }
+
+    .clock-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 5px
+    }
+
+    /* shared button */
+    button {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      background: var(--surface2);
+      border: 1px solid var(--border-md);
+      border-radius: var(--r-sm);
+      padding: 8px 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px
+    }
+
+    button:hover {
+      background: var(--surface3)
+    }
+
+    button:active {
+      transform: scale(0.97)
+    }
+
+    .btn-green {
+      background: var(--green-dim);
+      border-color: var(--green-border);
+      color: var(--green)
+    }
+
+    .btn-yellow {
+      background: var(--yellow-dim);
+      border-color: var(--yellow-border);
+      color: var(--yellow)
+    }
+
+    .btn-red {
+      background: var(--red-dim);
+      border-color: var(--red-border);
+      color: var(--red)
+    }
+
+    .btn-blue {
+      background: var(--blue-dim);
+      border-color: var(--blue-border);
+      color: var(--blue)
+    }
+
+    .btn-accent {
+      background: var(--accent);
+      border: none;
+      color: #fff;
+      font-weight: 700
+    }
+
+    .btn-accent:hover {
+      background: #fb923c
+    }
+
+    input,
+    select,
+    textarea {
+      background: var(--surface2);
+      border: 1px solid var(--border-md);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: var(--r-sm);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      width: 100%;
+      transition: border-color 0.15s
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent-border);
+      background: var(--surface3)
+    }
+
+    input::placeholder {
+      color: var(--muted)
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 52px
+    }
+
+    label.lbl {
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 8px
+    }
+
+    .row2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px
+    }
+
+    .period-segs {
+      display: flex;
+      gap: 4px
+    }
+
+    .period-seg {
+      flex: 1;
+      height: 3px;
+      border-radius: 2px;
+      background: var(--surface3);
+      transition: background 0.3s
+    }
+
+    .period-seg.done {
+      background: var(--accent)
+    }
+
+    .period-seg.active {
+      background: var(--green);
+      animation: glow-bar 1.5s infinite alternate
+    }
+
+    @keyframes glow-bar {
+      from {
+        opacity: 0.6
+      }
+
+      to {
+        opacity: 1
+      }
+    }
+
+    /* FOULS */
+    .foul-tracker {
+      display: flex;
+      gap: 8px
+    }
+
+    .foul-card {
+      flex: 1;
+      background: var(--surface2);
+      border-radius: var(--r-sm);
+      border: 1px solid var(--border-md);
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px
+    }
+
+    .foul-card.danger {
+      border-color: var(--red-border);
+      background: var(--red-dim)
+    }
+
+    .foul-team-name {
+      font-size: 9px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 700
+    }
+
+    .foul-big-num {
+      font-family: 'DM Mono', monospace;
+      font-size: 30px;
+      font-weight: 500;
+      line-height: 1
+    }
+
+    .foul-card.danger .foul-big-num {
+      color: var(--red)
+    }
+
+    .foul-dots {
+      display: flex;
+      gap: 2px;
+      justify-content: center;
+      flex-wrap: wrap
+    }
+
+    .foul-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--surface3);
+      border: 1px solid var(--border-md);
+      transition: all 0.2s
+    }
+
+    .foul-dot.active {
+      background: var(--red);
+      border-color: var(--red)
+    }
+
+    .foul-ctrl {
+      display: flex;
+      gap: 4px;
+      width: 100%
+    }
+
+    .foul-btn {
+      flex: 1;
+      padding: 5px 0;
+      font-size: 15px;
+      font-weight: 700;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      border: 1px solid var(--border-md);
+      background: var(--surface3);
+      color: var(--text)
+    }
+
+    .foul-btn.plus {
+      background: var(--red-dim);
+      border-color: var(--red-border);
+      color: var(--red)
+    }
+
+    .foul-btn.plus:hover {
+      background: var(--red);
+      color: #fff
+    }
+
+    .foul-btn.minus:hover {
+      background: var(--red-dim);
+      color: var(--red)
+    }
+
+    /* TIMEOUTS */
+    .timeout-track {
+      display: flex;
+      gap: 4px
+    }
+
+    .to-seg {
+      flex: 1;
+      height: 20px;
+      border-radius: 3px;
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      font-weight: 700
+    }
+
+    .to-seg.used {
+      background: var(--yellow-dim);
+      border-color: var(--yellow-border);
+      color: var(--yellow)
+    }
+
+    /* PLAYER STATS */
+    .stat-chips {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px;
+      margin-bottom: 8px
+    }
+
+    .stat-chip {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 7px 6px;
+      text-align: center
+    }
+
+    .stat-chip-num {
+      font-family: 'DM Mono', monospace;
+      font-size: 20px;
+      font-weight: 500;
+      line-height: 1
+    }
+
+    .stat-chip-lbl {
+      font-size: 9px;
+      color: var(--muted);
+      margin-top: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px
+    }
+
+    .stepper {
+      display: flex;
+      border: 1px solid var(--border-md);
+      border-radius: var(--r-sm);
+      overflow: hidden
+    }
+
+    .stepper button {
+      border: none;
+      border-radius: 0;
+      padding: 6px 9px;
+      font-size: 15px;
+      background: var(--surface3);
+      flex-shrink: 0
+    }
+
+    .stepper input {
+      border: none;
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      border-radius: 0;
+      text-align: center;
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      background: var(--surface2);
+      width: 100%
+    }
+
+    /* EVENT LOG */
+    .event-log {
+      flex: 1;
+      overflow-y: auto;
+      scrollbar-width: thin
+    }
+
+    .event-item {
+      display: flex;
+      gap: 7px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      animation: slide-in 0.2s ease
+    }
+
+    @keyframes slide-in {
+      from {
+        opacity: 0;
+        transform: translateY(-4px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    .event-time {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      flex-shrink: 0;
+      padding-top: 2px;
+      min-width: 30px
+    }
+
+    .event-text {
+      font-size: 12px;
+      color: var(--muted2);
+      line-height: 1.4
+    }
+
+    #toast {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: var(--surface2);
+      border: 1px solid var(--border-md);
+      color: var(--text);
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      opacity: 0;
+      transition: all 0.25s;
+      pointer-events: none;
+      z-index: 999;
+      white-space: nowrap
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0)
+    }
+
+    ::-webkit-scrollbar {
+      width: 3px
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--surface3);
+      border-radius: 2px
+    }
   </style>
 </head>
+
 <body>
+  <div class="app">
 
-  <h1><a href="javascript:history.back()" style="color: #a0a5b8; text-decoration: none; font-size: 16px; margin-right: 15px;">&larr; Back</a> ⚙️ Admin Live Control Panel</h1>
-  <p class="status">🟢 Live System Active</p>
-
-  <div class="admin-grid">
-
-    <div class="card">
-      <h2>Select Match</h2>
-      <select id="matchId" onchange="onMatchChange()">
-        <% matches.forEach(match => { %>
-          <option value="<%= match.id %>" <%= match.id == selectedMatchId ? 'selected' : '' %>>
-            <%= match.teama %> vs <%= match.teamb %>
-          </option>
-        <% }) %>
-      </select>
-    </div>
-
-    <div class="card">
-      <h2>Update Score</h2>
-      <input id="scoreA" type="number" placeholder="Team A Score">
-      <input id="scoreB" type="number" placeholder="Team B Score">
-      <button onclick="updateScore()">Update Score</button>
-      <p id="currentScore" class="score-display">Current Score: --</p>
-    </div>
-
-    <div class="card">
-      <h2>⏱ Clock Control</h2>
-      <div class="stat-row">
-        <div><label>Time (MM:SS)</label><input id="clockTime" placeholder="10:00"></div>
-        <div><label>Quarter</label><input id="clockQuarter" placeholder="Q1"></div>
+    <header class="topbar">
+      <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
+        <div class="logo">
+          <div class="logo-icon">CC</div>Command Center
+        </div>
+        <div class="live-pill">
+          <div class="live-dot"></div>Live
+        </div>
       </div>
-      <div class="clock-display" id="adminClockDisplay">10:00</div>
-      <div class="clock-status" id="clockStatus">⏸ Stopped</div>
-      <div class="btn-row" style="margin-top:14px;">
-        <button class="btn-green"  onclick="clockAction('start')">▶ Start</button>
-        <button class="btn-yellow" onclick="clockAction('pause')">⏸ Pause</button>
-        <button class="btn-red"    onclick="clockAction('stop')">⏹ Stop</button>
+      <div class="match-select-wrap">
+        <select id="matchId" onchange="onMatchChange()">
+          <option value="" disabled selected>— Select a match —</option>
+          <option value="1">Lakers vs Celtics</option>
+          <option value="2">Warriors vs Bulls</option>
+          <option value="3">Heat vs Bucks</option>
+        </select>
       </div>
-      <button onclick="setClock()" style="margin-top:10px; background:#1e3a5f;">Set Time & Quarter</button>
-    </div>
+      <div class="time-display" id="wallClock">--:--:--</div>
+    </header>
 
-    <div class="card">
-      <h2>Add Play-by-Play Event</h2>
-      <select id="evtMatch">
-        <% matches.forEach(match => { %>
-          <option value="<%= match.id %>" <%= match.id == selectedMatchId ? 'selected' : '' %>>
-            <%= match.teama %> vs <%= match.teamb %>
-          </option>
-        <% }) %>
-      </select>
-      <input id="evtTime" placeholder="Time (e.g. 02:34)">
-      <input id="evtText" placeholder="Event description">
-      <select id="evtType">
-        <option value="score">🏀 Score</option>
-        <option value="foul">⚠️ Foul</option>
-        <option value="block">🛡️ Block</option>
-        <option value="timeout">⏱ Timeout</option>
-      </select>
-      <button onclick="addEvent()">Add Event</button>
-    </div>
+    <div class="main">
 
-    <div class="card">
-      <h2>Update Player Stats</h2>
-      <label>Select Match</label>
-      <select id="statsMatch" onchange="loadPlayers()">
-        <% matches.forEach(match => { %>
-          <option value="<%= match.id %>" <%= match.id == selectedMatchId ? 'selected' : '' %>>
-            <%= match.teama %> vs <%= match.teamb %>
-          </option>
-        <% }) %>
-      </select>
-      <label>Select Player</label>
-      <select id="statsPlayer"><option value="">-- select match first --</option></select>
-      <div class="stat-row" style="margin-top:12px;">
-        <div><label>Points</label><input id="statPoints" type="number" placeholder="0" min="0"></div>
-        <div><label>Fouls</label><input id="statFouls" type="number" placeholder="0" min="0"></div>
-        <div><label>Assists</label><input id="statAssists" type="number" placeholder="0" min="0"></div>
-        <div><label>Rebounds</label><input id="statRebounds" type="number" placeholder="0" min="0"></div>
-      </div>
-      <button onclick="updatePlayerStats()">Update Player Stats</button>
-    </div>
+      <aside class="sidebar">
 
+        <div class="panel-section">
+          <div class="section-label">Clock</div>
+          <div class="clock-display-wrap">
+            <div class="clock-big stopped" id="adminClockDisplay">10:00</div>
+            <div class="clock-status-txt" id="clockStatus">Stopped</div>
+            <div class="quarter-tabs">
+              <button class="q-tab active" onclick="setQ(this,'Q1')">Q1</button>
+              <button class="q-tab" onclick="setQ(this,'Q2')">Q2</button>
+              <button class="q-tab" onclick="setQ(this,'Q3')">Q3</button>
+              <button class="q-tab" onclick="setQ(this,'Q4')">Q4</button>
+            </div>
+            <div class="clock-set-row">
+              <input id="clockTime" value="10:00" placeholder="MM:SS" style="font-family:'DM Mono',monospace">
+              <button class="btn-blue" onclick="setClock()">Set</button>
+            </div>
+            <div class="clock-actions">
+              <button class="btn-green" onclick="clockAction('start')">▶️ Start</button>
+              <button class="btn-yellow" onclick="clockAction('pause')">⏸</button>
+              <button class="btn-red" onclick="clockAction('stop')">↺ Reset</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <div class="section-label">Quarter Progress</div>
+          <div class="period-segs">
+            <div class="period-seg active" id="seg1"></div>
+            <div class="period-seg" id="seg2"></div>
+            <div class="period-seg" id="seg3"></div>
+            <div class="period-seg" id="seg4"></div>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <div class="section-label">Team Fouls</div>
+          <div class="foul-tracker">
+            <div class="foul-card" id="foulCardA">
+              <div class="foul-team-name" id="foulTeamA">Team A</div>
+              <div class="foul-big-num" id="foulCountA">0</div>
+              <div class="foul-dots" id="foulDotsA"></div>
+              <div class="foul-ctrl">
+                <button class="foul-btn minus" onclick="removeFoul('A')">−</button>
+                <button class="foul-btn plus" onclick="addFoul('A')">+</button>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;padding:0 2px">
+              <span style="font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">vs</span>
+            </div>
+            <div class="foul-card" id="foulCardB">
+              <div class="foul-team-name" id="foulTeamB">Team B</div>
+              <div class="foul-big-num" id="foulCountB">0</div>
+              <div class="foul-dots" id="foulDotsB"></div>
+              <div class="foul-ctrl">
+                <button class="foul-btn minus" onclick="removeFoul('B')">−</button>
+                <button class="foul-btn plus" onclick="addFoul('B')">+</button>
+              </div>
+            </div>
+          </div>
+          <button
+            style="width:100%;margin-top:6px;font-size:11px;color:var(--muted);background:transparent;border:none;padding:5px"
+            onclick="resetFouls()">↺ Reset fouls</button>
+        </div>
+
+        <div class="panel-section">
+          <div class="section-label">Timeouts Left</div>
+          <div class="field">
+            <label class="lbl" id="toLblA">Team A</label>
+            <div class="timeout-track" id="toTrackA"></div>
+          </div>
+          <div class="field">
+            <label class="lbl" id="toLblB">Team B</label>
+            <div class="timeout-track" id="toTrackB"></div>
+          </div>
+          <button style="width:100%;font-size:11px;color:var(--muted);background:transparent;border:none;padding:4px"
+            onclick="resetTimeouts()">↺ Reset timeouts</button>
+        </div>
+
+        <div class="panel-section">
+          <div class="section-label">Match Info</div>
+          <div class="field"><label class="lbl">Venue</label><input id="infoVenue" placeholder="e.g. Staples Center">
+          </div>
+          <div class="field"><label class="lbl">Date</label><input id="infoDate" type="date"></div>
+          <button class="btn-blue" style="width:100%" onclick="pushMatchInfo()">Push Info</button>
+        </div>
+
+      </aside>
+
+      <main class="center">
+
+        <div class="scoreboard">
+          <div class="scoreboard-header">
+            <span class="sb-label">Live Scoreboard</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="sbQuarter"
+                style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--accent)">Q1</span>
+              <span style="color:var(--muted);font-size:10px">·</span>
+              <span id="sbClock" style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted2)">10:00</span>
+            </div>
+            <span class="sb-label" id="sbMatchLabel">Select a match</span>
+          </div>
+
+          <div class="score-main">
+            <div class="score-team-col">
+              <div class="team-name-big" id="sbTeamA">Team A</div>
+
+              <div class="score-number" id="dispScoreA">0</div>
+
+              <div class="manual-row">
+                <input type="number" id="manualA" placeholder="Type score" min="0">
+                <button class="btn-blue" onclick="setScoreManual('A')">Set</button>
+              </div>
+              <div class="pts-grid">
+                <button onclick="changeScore('A',1)">+1</button>
+                <button onclick="changeScore('A',2)">+2</button>
+                <button onclick="changeScore('A',3)">+3</button>
+              </div>
+              <button class="undo-btn" onclick="changeScore('A',-1)">− Undo last point</button>
+            </div>
+
+            <div class="score-vs-col">
+              <span
+                style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:2px">VS</span>
+            </div>
+
+            <div class="score-team-col">
+              <div class="team-name-big" id="sbTeamB">Team B</div>
+
+              <div class="score-number" id="dispScoreB">0</div>
+
+              <div class="manual-row">
+                <input type="number" id="manualB" placeholder="Type score" min="0">
+                <button class="btn-blue" onclick="setScoreManual('B')">Set</button>
+              </div>
+              <div class="pts-grid">
+                <button onclick="changeScore('B',1)">+1</button>
+                <button onclick="changeScore('B',2)">+2</button>
+                <button onclick="changeScore('B',3)">+3</button>
+              </div>
+              <button class="undo-btn" onclick="changeScore('B',-1)">− Undo last point</button>
+            </div>
+          </div>
+
+          <div class="broadcast-bar">
+            <button onclick="pushScore()" class="btn-accent"
+              style="flex:2;font-size:14px;padding:13px;border-radius:8px;min-height:46px">▶️ Push to Broadcast</button>
+            <button onclick="resetScore()"
+              style="flex:1;background:transparent;border:2px solid var(--red);color:var(--red);font-size:13px;font-weight:700;padding:13px;border-radius:8px;min-height:46px">↺
+              Reset</button>
+          </div>
+        </div>
+
+        <div class="scoreboard">
+          <div class="scoreboard-header">
+            <span class="sb-label">Play-by-Play</span>
+            <span class="sb-label" id="pbpCount">0 events</span>
+          </div>
+          <div style="padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+            <div class="row2">
+              <div class="field" style="margin:0"><label class="lbl">Game Time</label><input id="evtTime"
+                  placeholder="02:34" style="font-family:'DM Mono',monospace"></div>
+              <div class="field" style="margin:0"><label class="lbl">Event Type</label>
+                <select id="evtType">
+                  <option value="score">Score</option>
+                  <option value="foul">Foul</option>
+                  <option value="block">Block</option>
+                  <option value="steal">Steal</option>
+                  <option value="assist">Assist</option>
+                  <option value="rebound">Rebound</option>
+                  <option value="timeout">Timeout</option>
+                  <option value="sub">Sub</option>
+                  <option value="turnover">Turnover</option>
+                  <option value="injury">Injury</option>
+                </select>
+              </div>
+            </div>
+            <div class="field" style="margin:0">
+              <label class="lbl">Team</label>
+              <div class="row2">
+                <button id="evtTeamABtn" class="btn-blue" onclick="selectEvtTeam('A')" style="font-size:12px">Team
+                  A</button>
+                <button id="evtTeamBBtn" onclick="selectEvtTeam('B')" style="font-size:12px">Team B</button>
+              </div>
+            </div>
+            <div class="field" style="margin:0"><label class="lbl">What happened</label><input id="evtText"
+                placeholder="e.g. LeBron hits a 3 from the corner"></div>
+            <button onclick="addEvent()" class="btn-accent"
+              style="width:100%;font-size:13px;font-weight:700;padding:10px;border-radius:8px">+ Log Event</button>
+          </div>
+        </div>
+
+        <div class="scoreboard">
+          <div class="scoreboard-header">
+            <span class="sb-label">Quarter Summary</span>
+            <button onclick="clearQSummary()"
+              style="font-size:11px;color:var(--muted);background:transparent;border:none;padding:0;cursor:pointer">Clear</button>
+          </div>
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:12px">
+              <thead>
+                <tr style="border-bottom:1px solid var(--border)">
+                  <th
+                    style="padding:8px 14px;text-align:left;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:1px">
+                    Team</th>
+                  <th style="padding:8px;text-align:center;color:var(--muted);font-size:10px">Q1</th>
+                  <th style="padding:8px;text-align:center;color:var(--muted);font-size:10px">Q2</th>
+                  <th style="padding:8px;text-align:center;color:var(--muted);font-size:10px">Q3</th>
+                  <th style="padding:8px;text-align:center;color:var(--muted);font-size:10px">Q4</th>
+                  <th style="padding:8px;text-align:center;color:var(--accent);font-size:11px;font-weight:600">TOT</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom:1px solid var(--border)">
+                  <td style="padding:8px 14px;font-weight:600;font-family:'Syne',sans-serif;font-size:12px" id="qNameA">
+                    Team A</td>
+                  <td id="qA1" style="padding:7px 8px;text-align:center;font-family:'DM Mono',monospace">—</td>
+                  <td id="qA2" style="padding:7px 8px;text-align:center;font-family:'DM Mono',monospace">—</td>
+                  <td id="qA3" style="padding:7px 8px;text-align:center;font-family:'DM Mono',monospace">—</td>
+                  <td id="qA4" style="padding:7px 8px;text-align:center;font-family:'DM Mono',monospace">—</td>
+                  <td id="qAT"
+                    style="padding:7px 8px;text-align:center;font-family:'DM Mono',monospace;font-weight:600;color:var(--accent)">
+                    0</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 14px;font-weight:600;font-family:'Syne',sans-serif;font-size:12px" id="qNameB">
+                    Team B</td>
+                  <td id="qB1" style="padding:7px 8px;text-align:center;font-family:'DM Mono',monospace">—</td>
+                  <td id="qB2" style="padding:7px 8px;text-align:center;font-family:'DM Mono',monospace">—</td>
+                  <td id="qB3" style="padding:7px 8px;text-align:center;font-family:'DM Mono',monospace">—</td>
+                  <td id="qB4" style="padding:7px 8px;text-align:center;font-family:'DM Mono',monospace">—</td>
+                  <td id="qBT"
+                    style="padding:7px 8px;text-align:center;font-family:'DM Mono',monospace;font-weight:600;color:var(--accent)">
+                    0</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="padding:10px 14px;border-top:1px solid var(--border)">
+            <button onclick="saveQScore()" class="btn-accent"
+              style="width:100%;font-size:12px;font-weight:700;padding:10px;border-radius:8px">Save Quarter
+              Score</button>
+          </div>
+        </div>
+
+      </main>
+
+      <aside class="sidebar right">
+
+        <div class="panel-section">
+          <div class="section-label">Player Stats</div>
+          <div class="field"><label class="lbl">Player</label>
+            <select id="statsPlayer" onchange="onPlayerChange()">
+              <option value="">— Pick a match first —</option>
+            </select>
+          </div>
+          <div class="stat-chips">
+            <div class="stat-chip">
+              <div class="stat-chip-num" id="chipPts">0</div>
+              <div class="stat-chip-lbl">Points</div>
+            </div>
+            <div class="stat-chip">
+              <div class="stat-chip-num" id="chipFls">0</div>
+              <div class="stat-chip-lbl">Fouls</div>
+            </div>
+            <div class="stat-chip">
+              <div class="stat-chip-num" id="chipAst">0</div>
+              <div class="stat-chip-lbl">Assists</div>
+            </div>
+            <div class="stat-chip">
+              <div class="stat-chip-num" id="chipReb">0</div>
+              <div class="stat-chip-lbl">Rebounds</div>
+            </div>
+          </div>
+          <div class="row2" style="margin-bottom:8px">
+            <div><label class="lbl">Points</label>
+              <div class="stepper"><button onclick="stepStat('statPoints',-1)">−</button><input id="statPoints"
+                  type="number" value="0" min="0"><button onclick="stepStat('statPoints',1)">+</button></div>
+            </div>
+            <div><label class="lbl">Fouls</label>
+              <div class="stepper"><button onclick="stepStat('statFouls',-1)">−</button><input id="statFouls"
+                  type="number" value="0" min="0"><button onclick="stepStat('statFouls',1)">+</button></div>
+            </div>
+            <div><label class="lbl">Assists</label>
+              <div class="stepper"><button onclick="stepStat('statAssists',-1)">−</button><input id="statAssists"
+                  type="number" value="0" min="0"><button onclick="stepStat('statAssists',1)">+</button></div>
+            </div>
+            <div><label class="lbl">Rebounds</label>
+              <div class="stepper"><button onclick="stepStat('statRebounds',-1)">−</button><input id="statRebounds"
+                  type="number" value="0" min="0"><button onclick="stepStat('statRebounds',1)">+</button></div>
+            </div>
+            <div><label class="lbl">Steals</label>
+              <div class="stepper"><button onclick="stepStat('statSteals',-1)">−</button><input id="statSteals"
+                  type="number" value="0" min="0"><button onclick="stepStat('statSteals',1)">+</button></div>
+            </div>
+            <div><label class="lbl">Blocks</label>
+              <div class="stepper"><button onclick="stepStat('statBlocks',-1)">−</button><input id="statBlocks"
+                  type="number" value="0" min="0"><button onclick="stepStat('statBlocks',1)">+</button></div>
+            </div>
+          </div>
+          <button onclick="updatePlayerStats()"
+            style="width:100%;background:#14b8a6;border:none;color:#fff;font-size:13px;font-weight:700;padding:10px;border-radius:8px">Save
+            Player Stats</button>
+        </div>
+
+        <div class="panel-section">
+          <div class="section-label">Announcer Notes</div>
+          <div class="field"><textarea id="matchNotes" placeholder="Key moments, notes for broadcast..."></textarea>
+          </div>
+          <button onclick="pushNote()"
+            style="width:100%;background:#a855f7;border:none;color:#fff;font-size:13px;font-weight:700;padding:10px;border-radius:8px">Push
+            Note</button>
+        </div>
+
+        <div class="panel-section" style="padding:0;flex:1;display:flex;flex-direction:column;min-height:180px">
+          <div class="section-label" style="padding:12px 14px 0;margin-bottom:6px">Event Feed</div>
+          <div class="event-log" id="eventLog">
+            <div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">No events yet</div>
+          </div>
+        </div>
+
+      </aside>
+    </div>
   </div>
 
-  <div class="toast" id="toast">✅ Done!</div>
+  <div id="toast"></div>
 
-  <script src="/socket.io/socket.io.js"></script>
   <script>
-    const socket = io();
+    // ── Socket (graceful fallback if no server) ──
+    let socket;
+    try { socket = io() } catch (e) { socket = { emit: () => { } } }
 
-    function showToast(msg = "✅ Done!") {
-      const t = document.getElementById("toast");
-      t.textContent = msg;
-      t.classList.add("show");
-      setTimeout(() => t.classList.remove("show"), 2500);
+    // ── State ──
+    let clockSecs = 600, clockRunning = false, localClock = null;
+    let activeQ = 'Q1', activeQIdx = 1;
+    let teamAName = 'Team A', teamBName = 'Team B';
+    // SCORES stored as plain JS numbers — no hidden inputs
+    let scoreA = 0, scoreB = 0;
+    let foulsA = 0, foulsB = 0;
+    let timeoutsA = [false, false, false, false, false];
+    let timeoutsB = [false, false, false, false, false];
+    let eventCount = 0;
+    let selectedEvtTeam = 'A';
+    let qScores = { A: { Q1: null, Q2: null, Q3: null, Q4: null }, B: { Q1: null, Q2: null, Q3: null, Q4: null } };
+    let playerStats = {};
+
+    // ── EVENT META ──
+    const EVT_META = {
+      score: { icon: '🏀', color: '#f97316', label: 'Score' },
+      foul: { icon: '⚠️', color: '#ef4444', label: 'Foul' },
+      block: { icon: '🛡', color: '#3b82f6', label: 'Block' },
+      steal: { icon: '⚡', color: '#14b8a6', label: 'Steal' },
+      assist: { icon: '🎯', color: '#22c55e', label: 'Assist' },
+      rebound: { icon: '💥', color: '#a855f7', label: 'Rebound' },
+      timeout: { icon: '⏱', color: '#eab308', label: 'Timeout' },
+      sub: { icon: '🔄', color: '#9ca3af', label: 'Sub' },
+      turnover: { icon: '↩', color: '#ef4444', label: 'Turnover' },
+      injury: { icon: '🚑', color: '#ef4444', label: 'Injury' },
+      clock: { icon: '🕐', color: '#6b7280', label: 'Clock' },
+      system: { icon: '⚙', color: '#6b7280', label: 'System' },
+      stats: { icon: '📊', color: '#14b8a6', label: 'Stats' },
+      reset: { icon: '↺', color: '#ef4444', label: 'Reset' },
+      note: { icon: '📝', color: '#a855f7', label: 'Note' },
+    };
+
+    // ── CORE SCORE RENDER — single function, always call this ──
+    function renderScores() {
+      const elA = document.getElementById('dispScoreA');
+      const elB = document.getElementById('dispScoreB');
+      elA.textContent = scoreA;
+      elB.textContent = scoreB;
+      // also keep quarter total in sync live
+      document.getElementById('qAT').textContent = scoreA;
+      document.getElementById('qBT').textContent = scoreB;
     }
 
-    function updateScore() {
-      const matchId = document.getElementById("matchId").value;
-      const scorea  = document.getElementById("scoreA").value;
-      const scoreb  = document.getElementById("scoreB").value;
-      if (!scorea || !scoreb) { alert("Enter both scores"); return; }
-      socket.emit("update_score", { matchId, scorea, scoreb });
-      document.getElementById("currentScore").innerText = `Current Score: ${scorea} - ${scoreb}`;
-      document.getElementById("scoreA").value = "";
-      document.getElementById("scoreB").value = "";
-      showToast("✅ Score updated!");
+    function flashScore(team) {
+      const el = document.getElementById('dispScore' + team);
+      el.classList.remove('flash');
+      // force reflow so re-adding class works
+      void el.offsetWidth;
+      el.classList.add('flash');
+      el.addEventListener('animationend', () => el.classList.remove('flash'), { once: true });
     }
 
-    let localClock   = null;
-    let clockSecs    = 600;
-    let clockRunning = false;
+    // ── changeScore: +1/+2/+3 or undo ──
+    function changeScore(team, amount, silent = false) {
+      if (team === 'A') scoreA = Math.max(0, scoreA + amount);
+      else scoreB = Math.max(0, scoreB + amount);
+      renderScores();
+      flashScore(team);
 
+      if (!silent) {
+        const tname = team === 'A' ? teamAName : teamBName;
+        if (amount > 0) autoLog('score', tname, `+${amount} ${amount === 1 ? 'point' : 'points'} → total now ${team === 'A' ? scoreA : scoreB}`);
+        else autoLog('foul', tname, `Score corrected → now ${team === 'A' ? scoreA : scoreB}`);
+      }
+    }
+
+    // ── setScoreManual: type a number and hit Set ──
+    function setScoreManual(team) {
+      const inp = document.getElementById('manual' + team);
+      const val = parseInt(inp.value, 10);
+      if (isNaN(val) || val < 0) { showToast('Enter a valid number'); return }
+      if (team === 'A') scoreA = val;
+      else scoreB = val;
+      renderScores();
+      flashScore(team);
+      inp.value = '';
+      const tname = team === 'A' ? teamAName : teamBName;
+      autoLog('score', tname, `Score manually set to ${val}`);
+      showToast('Score set to ' + val);
+    }
+
+    function pushScore() {
+      const matchId = document.getElementById('matchId').value;
+      if (!matchId) { showToast('Pick a match first'); return }
+      socket.emit('update_score', { matchId, scorea: scoreA, scoreb: scoreB });
+      autoLog('system', null, `Live score pushed → ${teamAName} ${scoreA} – ${scoreB} ${teamBName}`);
+      showToast(`Pushed: ${scoreA} – ${scoreB}`);
+    }
+
+    function resetScore() {
+      if (!confirm('Reset both scores to 0?')) return;
+      scoreA = 0; scoreB = 0;
+      renderScores();
+      autoLog('reset', null, 'Scores reset to 0 – 0');
+      showToast('Scores reset');
+    }
+
+    // ── EVENT LOG ──
+    function autoLog(type, teamName, description, colorOverride) {
+      const log = document.getElementById('eventLog');
+      if (eventCount === 0) log.innerHTML = '';
+      eventCount++;
+      document.getElementById('pbpCount').textContent = eventCount + (eventCount === 1 ? ' event' : ' events');
+      const time = formatClock(clockSecs);
+      const meta = EVT_META[type] || EVT_META.system;
+      const c = colorOverride || meta.color;
+      const item = document.createElement('div');
+      item.className = 'event-item';
+      item.style.borderLeft = `3px solid ${c}`;
+      item.innerHTML = `
+    <div class="event-time">${time}</div>
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px;flex-wrap:wrap">
+        <span style="font-size:12px">${meta.icon}</span>
+        <span style="font-size:9px;font-weight:700;text-transform:uppercase;padding:1px 5px;border-radius:3px;background:${c}22;color:${c}">${meta.label}</span>
+        ${teamName ? `<span style="font-size:9px;color:${c};font-weight:700;text-transform:uppercase">${teamName}</span>` : ''}
+        <span style="font-size:9px;color:#6b7280;margin-left:auto">${activeQ}</span>
+      </div>
+      <div class="event-text">${description}</div>
+    </div>`;
+      log.insertBefore(item, log.firstChild);
+    }
+
+    // ── WALL CLOCK ──
+    function updateWallClock() {
+      document.getElementById('wallClock').textContent = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+    setInterval(updateWallClock, 1000);
+    updateWallClock();
+
+    // ── TOAST ──
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg; t.classList.add('show');
+      clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 2000);
+    }
+
+    // ── MATCH SELECT ──
+    function onMatchChange() {
+      const sel = document.getElementById('matchId');
+      if (!sel.value) return;
+      const txt = sel.options[sel.selectedIndex].text;
+      const teams = txt.split(' vs ');
+      if (teams.length === 2) { teamAName = teams[0].trim(); teamBName = teams[1].trim() }
+      // update all team name labels
+      const idsA = ['sbTeamA', 'foulTeamA', 'qNameA', 'toLblA'];
+      const idsB = ['sbTeamB', 'foulTeamB', 'qNameB', 'toLblB'];
+      idsA.forEach(id => { try { document.getElementById(id).textContent = teamAName } catch (e) { } });
+      idsB.forEach(id => { try { document.getElementById(id).textContent = teamBName } catch (e) { } });
+      document.getElementById('evtTeamABtn').textContent = teamAName;
+      document.getElementById('evtTeamBBtn').textContent = teamBName;
+      document.getElementById('sbMatchLabel').textContent = txt;
+      // reset scores
+      scoreA = 0; scoreB = 0;
+      renderScores();
+      resetFoulsQuiet();
+      renderTimeouts();
+      loadPlayers();
+      autoLog('system', null, 'Match loaded: ' + txt);
+      showToast('Now managing: ' + txt);
+    }
+
+    // ── CLOCK ──
     function formatClock(s) {
-      const m = Math.floor(s / 60).toString().padStart(2, "0");
-      const sec = (s % 60).toString().padStart(2, "0");
-      return `${m}:${sec}`;
+      return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
     }
-
+    function setClockDisplay(val, state) {
+      const el = document.getElementById('adminClockDisplay');
+      el.textContent = val; el.className = 'clock-big ' + state;
+      document.getElementById('sbClock').textContent = val;
+    }
     function setClock() {
-      const time    = document.getElementById("clockTime").value.trim();
-      const quarter = document.getElementById("clockQuarter").value.trim();
-      if (!time || !quarter) { alert("Enter time and quarter"); return; }
-      const parts = time.split(":").map(Number);
-      clockSecs   = (parts[0] * 60) + (parts[1] || 0);
-      document.getElementById("adminClockDisplay").textContent = formatClock(clockSecs);
-      const matchId = document.getElementById("matchId").value;
-      socket.emit("update_clock", { matchId, time: formatClock(clockSecs), quarter, running: false });
-      showToast("🕐 Clock set to " + formatClock(clockSecs));
+      const t = document.getElementById('clockTime').value.trim();
+      const parts = t.split(':').map(Number);
+      clockSecs = (parts[0] || 0) * 60 + (parts[1] || 0);
+      if (clockRunning) clockAction('pause');
+      setClockDisplay(formatClock(clockSecs), 'stopped');
+      document.getElementById('clockStatus').textContent = 'Stopped';
+      autoLog('clock', null, `Clock set to ${formatClock(clockSecs)}`);
+      showToast('Clock synced');
     }
-
+    function setQ(btn, q) {
+      const prev = activeQ;
+      activeQ = q; activeQIdx = parseInt(q[1]);
+      document.querySelectorAll('.q-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('sbQuarter').textContent = q;
+      for (let i = 1; i <= 4; i++) {
+        const seg = document.getElementById('seg' + i);
+        seg.classList.remove('active', 'done');
+        if (i < activeQIdx) seg.classList.add('done');
+        else if (i === activeQIdx) seg.classList.add('active');
+      }
+      if (prev !== q) autoLog('clock', null, `Period changed: ${prev} → ${q}`);
+    }
     function clockAction(action) {
-      const matchId = document.getElementById("matchId").value;
-      const quarter = document.getElementById("clockQuarter").value.trim() || "Q1";
-
-      if (action === "start") {
+      const matchId = document.getElementById('matchId').value;
+      const st = document.getElementById('clockStatus');
+      if (action === 'start') {
         if (clockRunning) return;
         clockRunning = true;
-        document.getElementById("clockStatus").textContent = "▶ Running";
-
+        st.textContent = 'Running · ' + activeQ;
+        setClockDisplay(formatClock(clockSecs), 'running');
+        autoLog('clock', null, `Clock started — ${formatClock(clockSecs)}`);
         localClock = setInterval(() => {
           if (clockSecs > 0) {
             clockSecs--;
-            const formatted = formatClock(clockSecs);
-            document.getElementById("adminClockDisplay").textContent = formatted;
-            socket.emit("update_clock", { matchId, time: formatted, quarter, running: true });
+            const f = formatClock(clockSecs);
+            setClockDisplay(f, 'running');
+            document.getElementById('clockTime').value = f;
+            socket.emit('update_clock', { matchId, time: f, quarter: activeQ, running: true });
           } else {
-            clearInterval(localClock);
-            clockRunning = false;
-            document.getElementById("clockStatus").textContent = "⏹ Time Up";
-            socket.emit("update_clock", { matchId, time: "00:00", quarter, running: false });
+            clearInterval(localClock); clockRunning = false;
+            st.textContent = 'Time Up!';
+            setClockDisplay('00:00', 'stopped');
+            socket.emit('update_clock', { matchId, time: '00:00', quarter: activeQ, running: false });
+            autoLog('clock', null, `${activeQ} ended — time is up!`);
           }
         }, 1000);
-
-      } else if (action === "pause") {
-        clearInterval(localClock);
-        clockRunning = false;
-        document.getElementById("clockStatus").textContent = "⏸ Paused";
-        socket.emit("update_clock", { matchId, time: formatClock(clockSecs), quarter, running: false });
-        showToast("⏸ Clock paused");
-
-      } else if (action === "stop") {
-        clearInterval(localClock);
-        clockRunning = false;
-        clockSecs    = 600;
-        document.getElementById("adminClockDisplay").textContent = "10:00";
-        document.getElementById("clockStatus").textContent = "⏹ Stopped";
-        socket.emit("update_clock", { matchId, time: "10:00", quarter, running: false });
-        showToast("⏹ Clock reset");
+      } else if (action === 'pause') {
+        clearInterval(localClock); clockRunning = false;
+        st.textContent = 'Paused';
+        setClockDisplay(formatClock(clockSecs), 'paused');
+        socket.emit('update_clock', { matchId, time: formatClock(clockSecs), quarter: activeQ, running: false });
+        autoLog('clock', null, `Clock paused at ${formatClock(clockSecs)}`);
+        showToast('Clock paused');
+      } else {
+        clearInterval(localClock); clockRunning = false;
+        clockSecs = 600; st.textContent = 'Stopped';
+        setClockDisplay('10:00', 'stopped');
+        document.getElementById('clockTime').value = '10:00';
+        socket.emit('update_clock', { matchId, time: '10:00', quarter: activeQ, running: false });
+        autoLog('clock', null, 'Clock reset to 10:00');
+        showToast('Clock reset');
       }
     }
 
+    // ── FOULS ──
+    function renderFoulDots(team) {
+      const count = team === 'A' ? foulsA : foulsB;
+      const container = document.getElementById('foulDots' + team);
+      const card = document.getElementById('foulCard' + team);
+      container.innerHTML = '';
+      for (let i = 0; i < 7; i++) {
+        const d = document.createElement('div');
+        d.className = 'foul-dot' + (i < count ? ' active' : '');
+        container.appendChild(d);
+      }
+      count >= 5 ? card.classList.add('danger') : card.classList.remove('danger');
+    }
+    function addFoul(team, silent = false) {
+      if (team === 'A') { foulsA = Math.min(7, foulsA + 1); document.getElementById('foulCountA').textContent = foulsA }
+      else { foulsB = Math.min(7, foulsB + 1); document.getElementById('foulCountB').textContent = foulsB }
+      renderFoulDots(team);
+
+      if (!silent) {
+        const tname = team === 'A' ? teamAName : teamBName;
+        const count = team === 'A' ? foulsA : foulsB;
+        socket.emit('update_fouls', { matchId: document.getElementById('matchId').value, team, count });
+        if (count >= 5) { autoLog('foul', tname, `Foul #${count} — foul trouble!`, '#ef4444'); showToast('⚠ ' + tname + ' in foul trouble!') }
+        else { autoLog('foul', tname, `Team foul #${count}`); showToast('Foul added — ' + tname) }
+      }
+    }
+    function removeFoul(team, silent = false) {
+      if (team === 'A') { foulsA = Math.max(0, foulsA - 1); document.getElementById('foulCountA').textContent = foulsA }
+      else { foulsB = Math.max(0, foulsB - 1); document.getElementById('foulCountB').textContent = foulsB }
+      renderFoulDots(team);
+
+      if (!silent) {
+        const tname = team === 'A' ? teamAName : teamBName;
+        const count = team === 'A' ? foulsA : foulsB;
+        socket.emit('update_fouls', { matchId: document.getElementById('matchId').value, team, count });
+        autoLog('foul', tname, `Foul removed → ${count} now`);
+        showToast('Foul removed — ' + tname);
+      }
+    }
+    function resetFouls() {
+      foulsA = 0; foulsB = 0;
+      document.getElementById('foulCountA').textContent = '0';
+      document.getElementById('foulCountB').textContent = '0';
+      renderFoulDots('A'); renderFoulDots('B');
+      autoLog('system', null, 'Fouls reset'); showToast('Fouls reset');
+    }
+    function resetFoulsQuiet() {
+      foulsA = 0; foulsB = 0;
+      document.getElementById('foulCountA').textContent = '0';
+      document.getElementById('foulCountB').textContent = '0';
+      renderFoulDots('A'); renderFoulDots('B');
+    }
+
+    // ── TIMEOUTS ──
+    function renderTimeouts() {
+      ['A', 'B'].forEach(team => {
+        const arr = team === 'A' ? timeoutsA : timeoutsB;
+        const container = document.getElementById('toTrack' + team);
+        container.innerHTML = '';
+        arr.forEach((used, i) => {
+          const s = document.createElement('div');
+          s.className = 'to-seg' + (used ? ' used' : '');
+          s.textContent = used ? '✓' : '';
+          s.onclick = () => {
+            const wasUsed = used;
+            if (team === 'A') timeoutsA[i] = !timeoutsA[i]; else timeoutsB[i] = !timeoutsB[i];
+            renderTimeouts();
+            const tname = team === 'A' ? teamAName : teamBName;
+            const rem = (team === 'A' ? timeoutsA : timeoutsB).filter(x => !x).length;
+            if (!wasUsed) { autoLog('timeout', tname, `Timeout called — ${rem} left`, '#eab308'); showToast('Timeout — ' + tname) }
+            else autoLog('timeout', tname, `Timeout restored — ${rem} left`, '#eab308');
+          };
+          container.appendChild(s);
+        });
+      });
+    }
+    function resetTimeouts() {
+      timeoutsA = [false, false, false, false, false];
+      timeoutsB = [false, false, false, false, false];
+      renderTimeouts();
+      autoLog('system', null, 'Timeouts reset'); showToast('Timeouts reset');
+    }
+
+    // ── PLAY BY PLAY ──
+    function selectEvtTeam(team) {
+      selectedEvtTeam = team;
+      document.getElementById('evtTeamABtn').className = team === 'A' ? 'btn-blue' : '';
+      document.getElementById('evtTeamBBtn').className = team === 'B' ? 'btn-blue' : '';
+    }
     function addEvent() {
-      const matchId = document.getElementById("evtMatch").value;
-      const time    = document.getElementById("evtTime").value;
-      const text    = document.getElementById("evtText").value;
-      const type    = document.getElementById("evtType").value;
-      if (!time || !text) { alert("Fill all fields"); return; }
-      socket.emit("new_event", { matchId, time, text, type });
-      document.getElementById("evtTime").value = "";
-      document.getElementById("evtText").value = "";
-      showToast("📋 Event added!");
+      const matchId = document.getElementById('matchId').value;
+      if (!matchId) { showToast('Pick a match first'); return }
+      const text = document.getElementById('evtText').value.trim();
+      const type = document.getElementById('evtType').value;
+      if (!text) { showToast('Describe what happened'); return }
+      const tname = selectedEvtTeam === 'A' ? teamAName : teamBName;
+      socket.emit('new_event', { matchId, time: formatClock(clockSecs), text, type, team: selectedEvtTeam });
+      autoLog(type, tname, text);
+      document.getElementById('evtText').value = '';
+      showToast('Event logged');
     }
 
-    async function loadPlayers() {
-      const matchId = document.getElementById("statsMatch").value;
-      const sel     = document.getElementById("statsPlayer");
-      sel.innerHTML = '<option value="">Loading...</option>';
+    // ── QUARTER SCORES ──
+    function saveQScore() {
+      qScores.A[activeQ] = scoreA; qScores.B[activeQ] = scoreB;
+      ['A', 'B'].forEach(t => {
+        ['Q1', 'Q2', 'Q3', 'Q4'].forEach((q, i) => {
+          const v = qScores[t][q];
+          document.getElementById('q' + t + (i + 1)).textContent = v !== null ? v : '—';
+        });
+      });
+      autoLog('system', null, `${activeQ} saved → ${teamAName} ${scoreA} – ${scoreB} ${teamBName}`);
+      showToast(activeQ + ' score saved');
+    }
+    function clearQSummary() {
+      qScores = { A: { Q1: null, Q2: null, Q3: null, Q4: null }, B: { Q1: null, Q2: null, Q3: null, Q4: null } };
+      ['A', 'B'].forEach(t => ['Q1', 'Q2', 'Q3', 'Q4'].forEach((_, i) => { document.getElementById('q' + t + (i + 1)).textContent = '—' }));
+      document.getElementById('qAT').textContent = scoreA;
+      document.getElementById('qBT').textContent = scoreB;
+    }
 
-      try {
-        const res  = await fetch(`/api/match/${matchId}/players`);
-        const data = await res.json();
-        sel.innerHTML = data.map(p => `<option value="${p.id}">${p.name} (${p.team})</option>`).join("");
-      } catch(e) {
-        sel.innerHTML = '<option value="">Error loading players</option>';
-      }
+    // ── PLAYER STATS (LINKED TO TEAM) ──
+    function loadPlayers() {
+      const sel = document.getElementById('statsPlayer');
+      sel.innerHTML = `<option value="">— Choose a player —</option>
+    <option value="1">LeBron James (${teamAName})</option>
+    <option value="2">Anthony Davis (${teamAName})</option>
+    <option value="3">Jayson Tatum (${teamBName})</option>
+    <option value="4">Jaylen Brown (${teamBName})</option>`;
+    }
+
+    function onPlayerChange() {
+      const pid = document.getElementById('statsPlayer').value;
+      if (!pid) return;
+      const saved = playerStats[pid] || { points: 0, fouls: 0, assists: 0, rebounds: 0, steals: 0, blocks: 0 };
+      ['Points', 'Fouls', 'Assists', 'Rebounds', 'Steals', 'Blocks'].forEach(k => {
+        document.getElementById('stat' + k).value = saved[k.toLowerCase()] || 0;
+      });
+      document.getElementById('chipPts').textContent = saved.points;
+      document.getElementById('chipFls').textContent = saved.fouls;
+      document.getElementById('chipAst').textContent = saved.assists;
+      document.getElementById('chipReb').textContent = saved.rebounds;
+    }
+
+    function stepStat(id, amt) {
+      const el = document.getElementById(id);
+      el.value = Math.max(0, (parseInt(el.value) || 0) + amt);
+      const m = { statPoints: 'chipPts', statFouls: 'chipFls', statAssists: 'chipAst', statRebounds: 'chipReb' };
+      if (m[id]) document.getElementById(m[id]).textContent = el.value;
     }
 
     function updatePlayerStats() {
-      const matchId  = document.getElementById("statsMatch").value;
-      const playerId = document.getElementById("statsPlayer").value;
-      const points   = parseInt(document.getElementById("statPoints").value)   || 0;
-      const fouls    = parseInt(document.getElementById("statFouls").value)    || 0;
-      const assists  = parseInt(document.getElementById("statAssists").value)  || 0;
-      const rebounds = parseInt(document.getElementById("statRebounds").value) || 0;
+      const matchId = document.getElementById('matchId').value;
+      if (!matchId) { showToast('Pick a match first'); return }
+      const pid = document.getElementById('statsPlayer').value;
+      if (!pid) { showToast('Pick a player'); return }
 
-      if (!playerId) { alert("Select a player"); return; }
+      const sel = document.getElementById('statsPlayer');
+      const playerName = sel.options[sel.selectedIndex].text.split(' (')[0];
+      const teamPart = sel.options[sel.selectedIndex].text.match(/\(([^)]+)\)/)?.[1] || '';
 
-      socket.emit("update_player_stats", { matchId, playerId, points, fouls, assists, rebounds });
-      showToast("✅ Player stats updated!");
+      // Find out if player is Team A or Team B
+      const teamKey = (teamPart === teamAName) ? 'A' : (teamPart === teamBName ? 'B' : null);
 
-      document.getElementById("statPoints").value   = "";
-      document.getElementById("statFouls").value    = "";
-      document.getElementById("statAssists").value  = "";
-      document.getElementById("statRebounds").value = "";
+      // Get old stats to calculate the difference
+      const oldStats = playerStats[pid] || { points: 0, fouls: 0, assists: 0, rebounds: 0, steals: 0, blocks: 0 };
+
+      const stats = {
+        points: parseInt(document.getElementById('statPoints').value) || 0,
+        fouls: parseInt(document.getElementById('statFouls').value) || 0,
+        assists: parseInt(document.getElementById('statAssists').value) || 0,
+        rebounds: parseInt(document.getElementById('statRebounds').value) || 0,
+        steals: parseInt(document.getElementById('statSteals').value) || 0,
+        blocks: parseInt(document.getElementById('statBlocks').value) || 0,
+      };
+
+      // Calculate Deltas
+      const ptsDiff = stats.points - oldStats.points;
+      const foulDiff = stats.fouls - oldStats.fouls;
+      const astDiff = stats.assists - oldStats.assists;
+      const rebDiff = stats.rebounds - oldStats.rebounds;
+      const stlDiff = stats.steals - oldStats.steals;
+      const blkDiff = stats.blocks - oldStats.blocks;
+
+      // 1. UPDATE TEAM SCORE
+      if (teamKey && ptsDiff !== 0) {
+        changeScore(teamKey, ptsDiff, true); // true = silent, don't double log
+      }
+
+      // 2. UPDATE TEAM FOULS
+      if (teamKey) {
+        if (foulDiff > 0) {
+          for (let i = 0; i < foulDiff; i++) addFoul(teamKey, true);
+        } else if (foulDiff < 0) {
+          for (let i = 0; i < Math.abs(foulDiff); i++) removeFoul(teamKey, true);
+        }
+      }
+
+      // Save new stats to memory and UI
+      playerStats[pid] = stats;
+      document.getElementById('chipPts').textContent = stats.points;
+      document.getElementById('chipFls').textContent = stats.fouls;
+      document.getElementById('chipAst').textContent = stats.assists;
+      document.getElementById('chipReb').textContent = stats.rebounds;
+      socket.emit('update_player_stats', { matchId, playerId: pid, ...stats });
+
+      // 3. FAN-FRIENDLY PLAY-BY-PLAY EVENT LOGGING
+      let eventLogged = false;
+
+      if (ptsDiff === 3) { autoLog('score', teamPart, `SPLASH! 💦 ${playerName} hits a huge 3-pointer!`); eventLogged = true; }
+      else if (ptsDiff === 2) { autoLog('score', teamPart, `BUCKET! 🏀 ${playerName} gets the tough 2 points.`); eventLogged = true; }
+      else if (ptsDiff === 1) { autoLog('score', teamPart, `CASH! 🎯 ${playerName} sinks the free throw.`); eventLogged = true; }
+      else if (ptsDiff < 0) { autoLog('score', teamPart, `Score corrected: ${ptsDiff} pts for ${playerName}.`); eventLogged = true; }
+
+      if (astDiff > 0) { autoLog('assist', teamPart, `DIME! 🤝 Beautiful vision from ${playerName} for the assist.`); eventLogged = true; }
+      if (rebDiff > 0) { autoLog('rebound', teamPart, `GLASS! 🧱 ${playerName} cleans up the board with a big rebound.`); eventLogged = true; }
+      if (stlDiff > 0) { autoLog('steal', teamPart, `PICKPOCKET! ⚡ ${playerName} comes up with the crucial steal!`); eventLogged = true; }
+      if (blkDiff > 0) { autoLog('block', teamPart, `DENIED! 🛑 ${playerName} swats it away!`); eventLogged = true; }
+      if (foulDiff > 0) { autoLog('foul', teamPart, `WHISTLE. ⚠️ Foul called on ${playerName}.`); eventLogged = true; }
+
+      // Fallback log
+      if (!eventLogged && (astDiff !== 0 || rebDiff !== 0 || stlDiff !== 0 || blkDiff !== 0 || foulDiff !== 0)) {
+        autoLog('stats', teamPart, `Stat correction applied for ${playerName}.`);
+      } else if (!eventLogged) {
+        // Just a general save with no changes
+        autoLog('stats', teamPart || null, `Stats saved for ${playerName}.`);
+      }
+
+      showToast('Stats & Score synced — ' + playerName);
     }
 
-    function onMatchChange() {
-      const val = document.getElementById("matchId").value;
-      document.getElementById("evtMatch").value   = val;
-      document.getElementById("statsMatch").value = val;
-      loadPlayers();
+    // ── MATCH INFO ──
+    function pushMatchInfo() {
+      const matchId = document.getElementById('matchId').value;
+      if (!matchId) { showToast('Pick a match first'); return }
+      const venue = document.getElementById('infoVenue').value;
+      const date = document.getElementById('infoDate').value;
+      socket.emit('update_match_info', { matchId, venue, date });
+      autoLog('system', null, `Match info — ${venue || 'no venue'}, ${date || 'no date'}`);
+      showToast('Match info pushed');
+    }
+    function pushNote() {
+      const matchId = document.getElementById('matchId').value;
+      if (!matchId) { showToast('Pick a match first'); return }
+      const note = document.getElementById('matchNotes').value.trim();
+      if (!note) { showToast('Write a note first'); return }
+      socket.emit('broadcast_note', { matchId, note });
+      autoLog('note', null, note);
+      showToast('Note pushed');
     }
 
-    // Load players for the auto-selected match immediately on startup
-    loadPlayers();
+    // ── INIT ──
+    renderFoulDots('A'); renderFoulDots('B');
+    renderTimeouts();
   </script>
-
 </body>
+
 </html>
