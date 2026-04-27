@@ -22,53 +22,39 @@ def predict():
     try:
         data = request.json
 
-        home = np.array([
-            data['home_fg'],
-            data['home_ft'],
-            data['home_tp'],
-            data['home_ast'],
-            data['home_reb']
-        ])
-
-        away = np.array([
-            data['away_fg'],
-            data['away_ft'],
-            data['away_tp'],
-            data['away_ast'],
-            data['away_reb']
-        ])
+        home = np.array(data['home'])
+        away = np.array(data['away'])
+        recent_stats = data['recent_stats']
 
         # Model logic (difference)
         diff = home - away
         diff_scaled = scaler.transform([diff])
         prob = model.predict_proba(diff_scaled)[0][1]
 
-        winner = "HOME TEAM" if prob > 0.5 else "AWAY TEAM"
-        losing_team = "AWAY TEAM" if prob > 0.5 else "HOME TEAM"
+        home_prob = round(prob * 100, 1)
+        away_prob = round((1 - prob) * 100, 1)
 
-        weaker = away if prob > 0.5 else home
         # DRILL LOGIC
-      
         drills = []
 
-        if weaker[0] < 0.45:
+        if recent_stats[0] < 0.45:
             drills.append("Low shooting efficiency → Shot selection + contested shooting drills")
 
-        if weaker[1] < 0.75:
+        if recent_stats[1] < 0.75:
             drills.append("Poor FT → 100 pressure free throws daily")
 
-        if weaker[2] < 0.35:
+        if recent_stats[2] < 0.35:
             drills.append("Weak 3PT → Corner 3 repetition drills")
 
-        if weaker[3] < 24:
+        if recent_stats[3] < 24:
             drills.append("Low assists → Ball movement drills (3-pass rule)")
 
-        if weaker[4] < 42:
+        if recent_stats[4] < 42:
             drills.append("Weak rebounding → Box-out drills")
 
         return jsonify({
-            "winner": winner,
-            "losing_team": losing_team,
+            "home_prob": home_prob,
+            "away_prob": away_prob,
             "drills": drills
         })
 

@@ -79,7 +79,7 @@ def train_win_predictor(df):
         param_grid,
         cv=5,
         scoring="accuracy",
-        n_jobs=-1,
+        n_jobs=1,
         verbose=1
     )
 
