@@ -157,112 +157,203 @@ app.get("/logout", (req, res) => {
 
 
 
-// --- Team & Player Management ---
+// ── 1. MAIN TEAM DASHBOARD (Lightweight) ──
 app.get("/team-dashboard", async (req, res) => {
   if (!req.isAuthenticated()) return res.redirect("/login");
-
   try {
-    // Base queries (unchanged)
     const [players] = await pool.query("SELECT * FROM players WHERE LOWER(team)=LOWER(?)", [req.user.team]);
     const [tournaments] = await pool.query("SELECT * FROM tournaments ORDER BY start_date ASC");
     const [registered] = await pool.query("SELECT tournament_id FROM tournament_teams WHERE LOWER(team_name)=LOWER(?)", [req.user.team]);
 
-    // Task 1a: Aggregate team-level stats across all tournaments
     const [teamStatsRows] = await pool.query(
-      `SELECT
-         COALESCE(SUM(wins), 0)    AS wins,
-         COALESCE(SUM(losses), 0)  AS losses,
-         COALESCE(SUM(points), 0)  AS points
-       FROM tournament_teams
-       WHERE LOWER(team_name) = LOWER(?)`,
-      [req.user.team]
+      `SELECT COALESCE(SUM(wins), 0) AS wins, COALESCE(SUM(losses), 0) AS losses, COALESCE(SUM(points), 0) AS points
+       FROM tournament_teams WHERE LOWER(team_name) = LOWER(?)`, [req.user.team]
     );
     const teamStats = teamStatsRows[0] || { wins: 0, losses: 0, points: 0 };
 
-    // Task 1b: Aggregate career stats per player from player_match_stats
     const [playerStatsRows] = await pool.query(
-      `SELECT
-         p.id                             AS player_id,
-         COALESCE(SUM(pms.points), 0)    AS points,
-         COALESCE(SUM(pms.assists), 0)   AS assists,
-         COALESCE(SUM(pms.rebounds), 0)  AS rebounds,
-         COALESCE(SUM(pms.steals), 0)    AS steals,
-         COALESCE(SUM(pms.blocks), 0)    AS blocks,
-         COALESCE(SUM(pms.fouls), 0)     AS fouls
-       FROM players p
-       LEFT JOIN player_match_stats pms ON p.id = pms.player_id
-       WHERE LOWER(p.team) = LOWER(?)
-       GROUP BY p.id`,
-      [req.user.team]
+      `SELECT p.id AS player_id, COALESCE(SUM(pms.points), 0) AS points, COALESCE(SUM(pms.assists), 0) AS assists,
+       COALESCE(SUM(pms.rebounds), 0) AS rebounds, COALESCE(SUM(pms.steals), 0) AS steals, 
+       COALESCE(SUM(pms.blocks), 0) AS blocks, COALESCE(SUM(pms.fouls), 0) AS fouls
+       FROM players p LEFT JOIN player_match_stats pms ON p.id = pms.player_id
+       WHERE LOWER(p.team) = LOWER(?) GROUP BY p.id`, [req.user.team]
     );
 
-    // Task 1c: Merge stats into the players array (default to 0 if no stats yet)
     const statsMap = new Map(playerStatsRows.map(s => [s.player_id, s]));
     const enrichedPlayers = players.map(p => ({
       ...p,
-      points:   statsMap.get(p.id)?.points   ?? 0,
-      assists:  statsMap.get(p.id)?.assists  ?? 0,
+      points: statsMap.get(p.id)?.points ?? 0,
+      assists: statsMap.get(p.id)?.assists ?? 0,
       rebounds: statsMap.get(p.id)?.rebounds ?? 0,
-      steals:   statsMap.get(p.id)?.steals   ?? 0,
-      blocks:   statsMap.get(p.id)?.blocks   ?? 0,
-      fouls:    statsMap.get(p.id)?.fouls    ?? 0,
+      steals: statsMap.get(p.id)?.steals ?? 0,
+      blocks: statsMap.get(p.id)?.blocks ?? 0,
+      fouls: statsMap.get(p.id)?.fouls ?? 0,
     }));
 
-    // ── Match History queries ──────────────────────────────────────────────
-    // Run all three in parallel; all wrapped by the outer try/catch
+    res.render("pages/team-dashboard", { user: req.user, players: enrichedPlayers, tournaments, registered, teamStats });
+  } catch (err) {
+    console.error("DASHBOARD ERROR:", err);
+    res.redirect("/");
+  }
+});
+
+// ── 2. NEW: DEDICATED STATS PAGE (Heavyweight) ──
+app.get("/stats", async (req, res) => {
+  if (!req.isAuthenticated()) return res.redirect("/login");
+  try {
+    // Get team stats again just for the ML model
+    const [teamStatsRows] = await pool.query(
+      `SELECT COALESCE(SUM(wins), 0) AS wins, COALESCE(SUM(losses), 0) AS losses, COALESCE(SUM(points), 0) AS points
+       FROM tournament_teams WHERE LOWER(team_name) = LOWER(?)`, [req.user.team]
+    );
+    const teamStats = teamStatsRows[0] || { wins: 0, losses: 0, points: 0 };
+
     const [[teamMatchRows], [matchStatRows], [gameEventRows]] = await Promise.all([
-
-      // 1. Every match this team has played, with tournament name
-      pool.query(
-        `SELECT m.*, t.name AS tournament_name
-         FROM tournament_matches m
-         LEFT JOIN tournaments t ON m.tournament_id = t.id
-         WHERE m.teama = ? OR m.teamb = ?
-         ORDER BY m.match_date DESC`,
-        [req.user.team, req.user.team]
-      ),
-
-      // 2. Box-score rows for every player on this team
-      pool.query(
-        `SELECT pms.*, p.name
-         FROM player_match_stats pms
-         JOIN players p ON pms.player_id = p.id
-         WHERE p.team = ?`,
-        [req.user.team]
-      ),
-
-      // 3. All play-by-play events for those matches
-      pool.query(
-        `SELECT e.*, p.name as player_name 
-         FROM game_events e
-         LEFT JOIN players p ON e.player_id = p.id
-         WHERE e.match_id IN (
-           SELECT id FROM tournament_matches WHERE teama = ? OR teamb = ?
-         )
-         ORDER BY e.created_at DESC`,
-        [req.user.team, req.user.team]
-      ),
+      pool.query(`SELECT m.*, t.name AS tournament_name FROM tournament_matches m LEFT JOIN tournaments t ON m.tournament_id = t.id WHERE m.teama = ? OR m.teamb = ? ORDER BY m.match_date DESC`, [req.user.team, req.user.team]),
+      pool.query(`SELECT pms.*, p.name FROM player_match_stats pms JOIN players p ON pms.player_id = p.id WHERE p.team = ?`, [req.user.team]),
+      pool.query(`SELECT e.*, p.name as player_name FROM game_events e LEFT JOIN players p ON e.player_id = p.id WHERE e.match_id IN (SELECT id FROM tournament_matches WHERE teama = ? OR teamb = ?) ORDER BY e.created_at DESC`, [req.user.team, req.user.team])
     ]);
 
-    // Attach box scores + events to each match object
     teamMatchRows.forEach(m => {
       m.boxScore = matchStatRows.filter(s => s.match_id === m.id);
-      m.events   = gameEventRows.filter(e => e.match_id === m.id);
-    });
-    // ── End Match History ──────────────────────────────────────────────────
-
-    res.render("pages/team-dashboard", {
-      user: req.user,
-      players: enrichedPlayers,
-      tournaments,
-      registered,
-      teamStats,
-      teamMatches: teamMatchRows,   // ← new
+      m.events = gameEventRows.filter(e => e.match_id === m.id);
     });
 
+    // Added for ML Opponent Dropdown
+    const [opponentTeamsRows] = await pool.query("SELECT DISTINCT team FROM players WHERE team != ? AND team IS NOT NULL", [req.user.team]);
+    const opponentTeams = opponentTeamsRows.map(r => r.team);
+
+    res.render("pages/stats", { user: req.user, teamMatches: teamMatchRows, teamStats, opponentTeams });
   } catch (err) {
-    console.error("TEAM DASHBOARD ERROR:", err);
-    res.redirect("/");
+    console.error("STATS ERROR:", err);
+    res.redirect("/team-dashboard");
+  }
+});
+
+// ── 3. NEW: API BRIDGE FOR ML BUTTONS ──
+// ── 3. API BRIDGE FOR ML BUTTONS ──
+app.post("/api/ask-ai", async (req, res) => {
+  if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+  try {
+    const myTeam = req.user.team;
+    const oppTeam = req.body.opponent_team;
+
+    // Helper: Approximate FG, FT, 3P based on Points and Assists
+    const getApproximations = (pts, ast) => {
+      let base_fg = 0.45;
+      let base_ft = 0.75;
+      let base_tp = 0.35;
+      let multiplier = 1 + ((pts - 70) / 700) + ((ast - 15) / 150);
+      return {
+        fg: Math.min(0.60, Math.max(0.35, base_fg * multiplier)),
+        ft: Math.min(0.95, Math.max(0.50, base_ft * multiplier)),
+        tp: Math.min(0.50, Math.max(0.20, base_tp * multiplier))
+      };
+    };
+
+    // 1. Rock-Solid Head-to-Head Query (Case-Insensitive)
+    const matchCondition = `((LOWER(tm.teama) = LOWER(?) AND LOWER(tm.teamb) = LOWER(?)) OR (LOWER(tm.teama) = LOWER(?) AND LOWER(tm.teamb) = LOWER(?)))`;
+    const matchParams = [myTeam, oppTeam, oppTeam, myTeam];
+
+    const [h2hMyTeamRows] = await pool.query(
+      `SELECT AVG(team_pts) as avg_pts, AVG(team_ast) as avg_ast, AVG(team_reb) as avg_reb
+       FROM (
+         SELECT SUM(pms.points) as team_pts, SUM(pms.assists) as team_ast, SUM(pms.rebounds) as team_reb
+         FROM player_match_stats pms 
+         JOIN players p ON pms.player_id = p.id
+         JOIN tournament_matches tm ON pms.match_id = tm.id
+         WHERE LOWER(p.team) = LOWER(?) AND ${matchCondition} AND tm.status = 'FINAL'
+         GROUP BY tm.id
+       ) as match_sums`,
+      [myTeam, ...matchParams]
+    );
+
+    const [h2hOppTeamRows] = await pool.query(
+      `SELECT AVG(team_pts) as avg_pts, AVG(team_ast) as avg_ast, AVG(team_reb) as avg_reb
+       FROM (
+         SELECT SUM(pms.points) as team_pts, SUM(pms.assists) as team_ast, SUM(pms.rebounds) as team_reb
+         FROM player_match_stats pms 
+         JOIN players p ON pms.player_id = p.id
+         JOIN tournament_matches tm ON pms.match_id = tm.id
+         WHERE LOWER(p.team) = LOWER(?) AND ${matchCondition} AND tm.status = 'FINAL'
+         GROUP BY tm.id
+       ) as match_sums`,
+      [oppTeam, ...matchParams]
+    );
+
+    let myH2H = h2hMyTeamRows[0];
+    let oppH2H = h2hOppTeamRows[0];
+
+    // Fallback to overall average ONLY if they've never played each other
+    if (!myH2H || myH2H.avg_pts == null) {
+      const [fallbackMy] = await pool.query(`SELECT AVG(team_pts) as avg_pts, AVG(team_ast) as avg_ast, AVG(team_reb) as avg_reb FROM (SELECT SUM(pms.points) as team_pts, SUM(pms.assists) as team_ast, SUM(pms.rebounds) as team_reb FROM player_match_stats pms JOIN players p ON pms.player_id = p.id JOIN tournament_matches tm ON pms.match_id = tm.id WHERE LOWER(p.team) = LOWER(?) AND tm.status = 'FINAL' GROUP BY tm.id) as match_sums`, [myTeam]);
+      myH2H = fallbackMy[0];
+    }
+    if (!oppH2H || oppH2H.avg_pts == null) {
+      const [fallbackOpp] = await pool.query(`SELECT AVG(team_pts) as avg_pts, AVG(team_ast) as avg_ast, AVG(team_reb) as avg_reb FROM (SELECT SUM(pms.points) as team_pts, SUM(pms.assists) as team_ast, SUM(pms.rebounds) as team_reb FROM player_match_stats pms JOIN players p ON pms.player_id = p.id JOIN tournament_matches tm ON pms.match_id = tm.id WHERE LOWER(p.team) = LOWER(?) AND tm.status = 'FINAL' GROUP BY tm.id) as match_sums`, [oppTeam]);
+      oppH2H = fallbackOpp[0];
+    }
+
+    const myPts = myH2H && myH2H.avg_pts != null ? parseFloat(myH2H.avg_pts) : 70;
+    const myAst = myH2H && myH2H.avg_ast != null ? parseFloat(myH2H.avg_ast) : 15;
+    const myReb = myH2H && myH2H.avg_reb != null ? parseFloat(myH2H.avg_reb) : 30;
+
+    const oppPts = oppH2H && oppH2H.avg_pts != null ? parseFloat(oppH2H.avg_pts) : 70;
+    const oppAst = oppH2H && oppH2H.avg_ast != null ? parseFloat(oppH2H.avg_ast) : 15;
+    const oppReb = oppH2H && oppH2H.avg_reb != null ? parseFloat(oppH2H.avg_reb) : 30;
+
+    const homeStats = [getApproximations(myPts, myAst).fg, getApproximations(myPts, myAst).ft, getApproximations(myPts, myAst).tp, myAst, myReb];
+    const awayStats = [getApproximations(oppPts, oppAst).fg, getApproximations(oppPts, oppAst).ft, getApproximations(oppPts, oppAst).tp, oppAst, oppReb];
+
+    // 2. Recent Form Query (My Team's last 5 matches against ANYONE)
+    const [recentRows] = await pool.query(
+      `SELECT pms.match_id, SUM(pms.points) as pts, SUM(pms.assists) as ast, SUM(pms.rebounds) as reb
+       FROM player_match_stats pms 
+       JOIN players p ON pms.player_id = p.id
+       JOIN tournament_matches tm ON pms.match_id = tm.id
+       WHERE LOWER(p.team) = LOWER(?) AND tm.status = 'FINAL'
+       GROUP BY pms.match_id, tm.match_date
+       ORDER BY tm.match_date DESC
+       LIMIT 5`,
+      [myTeam]
+    );
+
+    let recentStatsArray = homeStats; // default to overall if no recent games
+    if (recentRows.length > 0) {
+      let totalPts = 0, totalAst = 0, totalReb = 0;
+      recentRows.forEach(r => { totalPts += parseFloat(r.pts); totalAst += parseFloat(r.ast); totalReb += parseFloat(r.reb); });
+      let avgPts = totalPts / recentRows.length;
+      let avgAst = totalAst / recentRows.length;
+      let avgReb = totalReb / recentRows.length;
+      let recentApprox = getApproximations(avgPts, avgAst);
+      recentStatsArray = [recentApprox.fg, recentApprox.ft, recentApprox.tp, avgAst, avgReb];
+    }
+
+    const payload = {
+      home: homeStats,
+      away: awayStats,
+      recent_stats: recentStatsArray
+    };
+
+    const mlResponse = await fetch("http://127.0.0.1:5000/predict", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await mlResponse.json();
+
+    // 3. MAP PYTHON OUTPUT TO REAL TEAM NAMES
+    // 3. MAP PYTHON OUTPUT TO REAL TEAM NAMES AND PROBABILITIES
+    res.json({
+      my_team: myTeam,
+      my_team_prob: data.home_prob,
+      opp_team: oppTeam,
+      opp_team_prob: data.away_prob,
+      drills: data.drills
+    });
+  } catch (err) {
+    console.error("ML ENGINE ERROR:", err);
+    res.status(500).json({ status: "error", message: "AI Engine Offline or Error" });
   }
 });
 
@@ -946,8 +1037,8 @@ app.get("/score-match/:matchId", async (req, res) => {
     if (targetMatch.length === 0) return res.redirect("/admin");
     if (targetMatch[0].created_by !== req.user.id && !req.user.is_admin) return res.status(403).send("Unauthorized");
 
-    const tournamentId    = targetMatch[0].tournament_id;
-    const tournamentName  = targetMatch[0].tournament_name;
+    const tournamentId = targetMatch[0].tournament_id;
+    const tournamentName = targetMatch[0].tournament_name;
 
     // 2. Fetch all matches for this tournament to populate the dropdowns
     const [matches] = await pool.query("SELECT * FROM tournament_matches WHERE tournament_id=? ORDER BY id ASC", [tournamentId]);
@@ -1317,7 +1408,7 @@ io.on("connection", (socket) => {
       // Map UI event types to DB ENUM values
       const enumMap = {
         score: "2PT_MAKE", foul: "FOUL", block: "BLOCK",
-        steal: "STEAL",   assist: "ASSIST", rebound: "REBOUND",
+        steal: "STEAL", assist: "ASSIST", rebound: "REBOUND",
         timeout: "TIMEOUT", turnover: "TURNOVER",
       };
       const dbEventType = enumMap[type] || null;
