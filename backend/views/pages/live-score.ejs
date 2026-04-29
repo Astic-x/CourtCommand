@@ -299,6 +299,7 @@
               <option value="">— Pick a match first —</option>
             </select>
           </div>
+          <div id="activePlayersContainer"></div>
           <div class="stat-chips">
             <div class="stat-chip">
               <div class="stat-chip-num" id="chipPts">0</div>
@@ -388,7 +389,7 @@
     let selectedEvtTeam = 'A';
     let qScores = { A: { Q1: null, Q2: null, Q3: null, Q4: null }, B: { Q1: null, Q2: null, Q3: null, Q4: null } };
     let playerStats = {};
-
+    let playerSeconds = {};
     // ── EVENT META ──
     const EVT_META = {
       score: { icon: '🏀', color: '#f97316', label: 'Score' },
@@ -604,6 +605,19 @@
         localClock = setInterval(() => {
           if (clockSecs > 0) {
             clockSecs--;
+            const activePlayers = document.querySelectorAll('.on-court-toggle:checked');
+             if (activePlayers.length <= 10) { 
+              activePlayers.forEach(checkbox => {
+                const pid = checkbox.getAttribute('data-player-id');
+                if (!playerSeconds[pid]) playerSeconds[pid] = 0;
+                playerSeconds[pid]++;
+                 const secSpan = document.getElementById(`sec-${pid}`);
+                if (secSpan) {
+                  secSpan.textContent = Math.floor(playerSeconds[pid] / 60) + 'm';
+                }
+              });
+            }
+            socket.emit('update_live_minutes', { matchId, playerSeconds });
             const f = formatClock(clockSecs);
             setClockDisplay(f, 'running');
             document.getElementById('clockTime').value = f;
@@ -796,6 +810,26 @@
           sel.innerHTML += buildGroup('Other', others);
         }
 
+        // Generate On-Court Toggles
+        let togglesHtml = '<div style="margin-top: 10px; font-size: 12px; font-weight: bold; color: var(--muted);">On Court Toggles</div><div style="display:flex; flex-direction:column; gap:8px; margin-top:5px; max-height: 150px; overflow-y: auto;">';
+        players.forEach(player => {
+          const s = playerSeconds[player.id] || 0;
+          togglesHtml += `
+            <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); padding: 5px; border-radius: 4px;">
+              <span style="font-size:12px">${player.name}</span>
+              <div style="display: flex; align-items: center;">
+                <label class="switch" style="transform: scale(0.7); margin: 0;">
+                  <input type="checkbox" class="on-court-toggle" data-player-id="${player.id}">
+                  <span class="slider"></span>
+                </label>
+                <span id="sec-${player.id}" style="font-size: 12px; font-weight: bold; color: #14b8a6; margin-left: 5px; width: 30px; text-align: right;">${Math.floor(s/60)}m</span>
+              </div>
+            </div>
+          `;
+        });
+        togglesHtml += '</div>';
+        document.getElementById('activePlayersContainer').innerHTML = togglesHtml;
+
       } catch (err) {
         console.error(err);
         sel.innerHTML = '<option value="">— Error loading players —</option>';
@@ -875,7 +909,9 @@
       document.getElementById('chipFls').textContent = stats.fouls;
       document.getElementById('chipAst').textContent = stats.assists;
       document.getElementById('chipReb').textContent = stats.rebounds;
-      socket.emit('update_player_stats', { matchId, playerId: pid, ...stats });
+      
+      const secondsPlayed = playerSeconds[pid] || 0;
+      socket.emit('update_player_stats', { matchId, playerId: pid, ...stats, seconds_played: secondsPlayed });
 
       // 3. FAN-FRIENDLY PLAY-BY-PLAY EVENT LOGGING
       let eventLogged = false;
