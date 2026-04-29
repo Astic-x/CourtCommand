@@ -114,7 +114,6 @@
                   <div class="tooltip-row foul-row"><span>FOULS</span><span>
                       <%= player.fouls || 0 %>
                     </span></div>
-                  <div class="tooltip-row"><span>MIN</span><span id="live-min-<%= player.id %>">0m</span></div>
                 </div>
               </div>
               <% }) %>
@@ -303,7 +302,6 @@
                   <div class="tooltip-row foul-row"><span>FOULS</span><span>
                       <%= player.fouls || 0 %>
                     </span></div>
-                  <div class="tooltip-row"><span>MIN</span><span id="live-min-<%= player.id %>">0m</span></div>
                 </div>
               </div>
               <% }) %>
@@ -323,16 +321,6 @@
       socket.on(`match_${matchId}`, (data) => {
         document.querySelectorAll(".sb-score")[0].textContent = data.scorea;
         document.querySelectorAll(".sb-score")[1].textContent = data.scoreb;
-      });
-
-      // ── Live Minutes Update ──
-      socket.on('update_live_minutes', (data) => {
-        const { playerSeconds } = data;
-        if (!playerSeconds) return;
-        for (const [pid, seconds] of Object.entries(playerSeconds)) {
-          const minCell = document.getElementById(`live-min-${pid}`);
-          if (minCell) minCell.textContent = Math.floor(seconds / 60) + 'm';
-        }
       });
 
       // ── Live play-by-play events ──
