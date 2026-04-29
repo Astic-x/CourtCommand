@@ -9,7 +9,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import bcrypt from "bcrypt";
 
-// Import our new modular files
+
 import pool from "./config/db.js";
 import configurePassport from "./config/password.js";
 
@@ -21,7 +21,7 @@ const saltRounds = 10;
 
 app.set("view engine", "ejs");
 
-// Set views directory to correctly find partials and pages
+
 app.set('views', path.join(process.cwd(), 'views'));
 
 app.use(express.static("public"));
@@ -36,7 +36,6 @@ app.use(
   })
 );
 
-// Initialize Passport from our config file
 configurePassport();
 app.use(passport.initialize());
 app.use(passport.session());
@@ -52,7 +51,7 @@ const storage = multer.diskStorage({
     }
   },
   filename: (req, file, cb) => {
-    cb(null, Date.now() + '-' + file.originalname); // Added timestamp to prevent overwriting
+    cb(null, Date.now() + '-' + file.originalname); 
   }
 });
 const upload = multer({ storage });
@@ -73,7 +72,7 @@ app.use(async (req, res, next) => {
         match_date ASC
       LIMIT 4
     `);
-    res.locals.matches = matches; // Removed .rows
+    res.locals.matches = matches; 
   } catch (err) {
     console.log("MATCH LOAD ERROR:", err);
     res.locals.matches = [];
@@ -81,7 +80,7 @@ app.use(async (req, res, next) => {
   next();
 });
 
-// --- Public Routes ---
+// Public Routes
 app.get("/", async (req, res) => {
   res.render("pages/index"); // Adjusted to match your specific layout
 });
@@ -96,7 +95,7 @@ app.get("/news", (req, res) => {
 
 
 
-// --- Authentication ---
+//Authentication
 app.get("/login", (req, res) => {
   res.render("pages/login");
 });
@@ -157,7 +156,7 @@ app.get("/logout", (req, res) => {
 
 
 
-// ── 1. MAIN TEAM DASHBOARD (Lightweight) ──
+// MAIN TEAM DASHBOARD 
 app.get("/team-dashboard", async (req, res) => {
   if (!req.isAuthenticated()) return res.redirect("/login");
   try {
@@ -201,7 +200,7 @@ app.get("/team-dashboard", async (req, res) => {
   }
 });
 
-// ── 2. NEW: DEDICATED STATS PAGE (Heavyweight) ──
+// DEDICATED STATS PAGE (Heavyweight)
 app.get("/stats", async (req, res) => {
   if (!req.isAuthenticated()) return res.redirect("/login");
   try {
@@ -234,8 +233,7 @@ app.get("/stats", async (req, res) => {
   }
 });
 
-// ── 3. NEW: API BRIDGE FOR ML BUTTONS ──
-// ── 3. API BRIDGE FOR ML BUTTONS ──
+// API BRIDGE FOR ML BUTTONS
 app.post("/api/ask-ai", async (req, res) => {
   if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
   try {
@@ -346,8 +344,8 @@ app.post("/api/ask-ai", async (req, res) => {
     });
     const data = await mlResponse.json();
 
-    // 3. MAP PYTHON OUTPUT TO REAL TEAM NAMES
-    // 3. MAP PYTHON OUTPUT TO REAL TEAM NAMES AND PROBABILITIES
+   
+    //MAP PYTHON OUTPUT TO REAL TEAM NAMES AND PROBABILITIES
     res.json({
       my_team: myTeam,
       my_team_prob: data.home_prob,
@@ -530,7 +528,7 @@ app.get("/api/match/:id/players", async (req, res) => {
 
 
 
-// --- Tournament Administration (Organizers) ---
+//  Tournament Administration 
 
 app.get("/manage-tournaments", async (req, res) => {
   if (!req.isAuthenticated()) return res.redirect("/login");
@@ -950,7 +948,7 @@ app.post("/admin/generate-fixtures/:tournamentId", async (req, res) => {
 
 
 
-// --- Tournament Views & Standings (Public) ---
+// Tournament Views & Standings (Public)
 
 
 app.get("/tournaments", async (req, res) => {
@@ -1042,7 +1040,7 @@ app.get("/standings", async (req, res) => {
       ORDER BY m.id ASC
     `);
 
-    // 3. Group matches by their tournament_id into a dictionary object
+    // Group matches by their tournament_id into a dictionary object
     // (This feeds the "matchesByTournament[t.id]" logic in your EJS)
     const matchesByTournament = {};
     allMatches.forEach(match => {
@@ -1071,7 +1069,7 @@ app.get("/standings", async (req, res) => {
 });
 
 
-// --- Match Operations & Live Scoring ---
+//Match Operations & Live Scoring 
 app.get("/score-match/:matchId", async (req, res) => {
   if (!req.isAuthenticated()) return res.redirect("/login");
   const { matchId } = req.params;
@@ -1414,9 +1412,9 @@ app.get("/live/:matchId", async (req, res) => {
 });
 
 
-/* =========================
-   SOCKET.IO SCORING ENGINE
-========================= */
+/* 
+SOCKET.IO SCORING ENGINE
+*/
 const httpServer = createServer(app);
 const io = new Server(httpServer);
 

@@ -15,7 +15,7 @@ html, body {
   background: #050912;
 }
 
-/* 🔥 THIS IS THE REAL FIX */
+/* THIS IS THE REAL FIX */
 .page {
   width: 100%;
   min-height: 100vh;
@@ -28,7 +28,7 @@ html, body {
   padding: 20px 40px;
 }
 
-/* ================= BODY PADDING ================= */
+/*BODY PADDING */
 body {
     margin: 0;
     padding: 0;
@@ -45,7 +45,7 @@ body.HOME {
  body.HOME .main-navbar {
    top: 90px;
 } 
-/* ================= SCOREBOARD ================= */
+/* SCOREBOARD */
 
 .scoreboard-bar {
     position: absolute;
@@ -71,18 +71,18 @@ body.HOME {
     min-width: 100%;
 }
 
-/* ================= BODY OFFSET ================= */
+/* BODY OFFSET */
 
 body.HOME {
-    padding-top: 160px;   /* 90 scoreboard + 70 navbar */
+    padding-top: 160px;   
 }
 
 body:not(.HOME) {
-    padding-top: 70px;    /* only navbar, no scoreboard */
+    padding-top: 70px;    
 }
 
 body:not(.HOME) .main-navbar {
-    top: 0;               /* navbar at very top on other pages */
+    top: 0;               
 }
 /* MATCH CARD */
 
@@ -176,8 +176,8 @@ flex-shrink: 0;
     }
 }
 
-/* ================= NAVBAR ================= */
-/* ================= NAVBAR ================= */
+
+/*NAVBAR */
 
 /* .main-navbar {
     position: fixed;
@@ -272,7 +272,7 @@ flex-shrink: 0;
 
 /* LOGO */
 
-/* 🔥 PERFECT CENTER LOGO */
+/* PERFECT CENTER LOGO */
 .logo {
     position: absolute;
     left: 50%;
@@ -308,7 +308,7 @@ flex-shrink: 0;
     transform: translateY(-1px);
 }
 
-/* ================= HERO ================= */
+/*  HERO */
 
 .hero {
     min-height: calc(100vh - 160px);
@@ -536,7 +536,7 @@ animation: dropBounce 1.5s ease-out forwards,
     }
 }
 
-/* ================= FEATURES SECTION ================= */
+/* FEATURES SECTION*/
 
 .bootstrap-section {
     background: linear-gradient(180deg,
@@ -624,7 +624,7 @@ animation: dropBounce 1.5s ease-out forwards,
     }
 }
 
-/* ================= RESPONSIVE ================= */
+/* RESPONSIVE */
 
 @media(max-width:900px) {
 
@@ -656,7 +656,7 @@ animation: dropBounce 1.5s ease-out forwards,
 
 }
 
-/* ================= TOURNAMENTS ================= */
+/*  TOURNAMENTS */
 
 .tournaments-section {
     padding: 100px 90px;
@@ -781,7 +781,7 @@ animation: dropBounce 1.5s ease-out forwards,
     transform: scale(1.1);
 }
 
-/* ================= STANDINGS SECTION ================= */
+/*STANDINGS SECTION */
 
 .standings-section {
 
@@ -1610,8 +1610,7 @@ input:-webkit-autofill:active {
 }
 
 
-/* ================= COURT LINEUP ================= */
-/* ================= BASKETBALL COURT ================= */
+/*  BASKETBALL COURT */
 .court {
     position: relative;
 
