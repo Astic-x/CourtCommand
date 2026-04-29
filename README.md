@@ -1,338 +1,151 @@
-# CourtCommand 🏀
+<div align="center">
+  <img src="https://img.shields.io/badge/CourtCommand-Basketball_Management-ff7a18?style=for-the-badge&logo=dribbble&logoColor=white" alt="CourtCommand">
+  <h1>🏀 CourtCommand</h1>
+  <p><b>Real-Time Tournament Administration & Predictive Strategic Analysis System</b></p>
+  
+  [![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
+  [![Express.js](https://img.shields.io/badge/Express.js-000000?style=flat-square&logo=express&logoColor=white)](https://expressjs.com/)
+  [![Socket.io](https://img.shields.io/badge/Socket.io-010101?style=flat-square&logo=socket.io&logoColor=white)](https://socket.io/)
+  [![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+  [![Flask](https://img.shields.io/badge/Flask-000000?style=flat-square&logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
+  [![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=flat-square&logo=mysql&logoColor=white)](https://www.mysql.com/)
+</div>
 
-**Real-Time Tournament Administration & Predictive Strategic Analysis System**
+<br/>
 
-The motivation behind **CourtCommand** comes from observing how disconnected local sports tournaments still are. While professional leagues rely on instant analytics, real-time statistics, and live digital coverage, most amateur tournaments still struggle with paper score sheets, manual scheduling, and inefficient management systems.
-
-CourtCommand aims to bridge this gap by creating a unified digital platform that connects **organizers, players, and fans** through a real-time data-driven environment.
-
-Our objective is simple: replace manual chaos with **professional-grade tournament management**, ensuring that every match—regardless of level—benefits from structured data collection, real-time visibility, and intelligent analysis.
-
-Developed by **Charlie Squad**
-
-* Ankush Malik
-* Vishal Vijay Singh
-* Sidharth Pundir
-* Akshat Bansal
+> **The Problem:** While professional leagues rely on instant analytics and live digital coverage, most amateur tournaments struggle with paper score sheets and inefficient management.
+> 
+> **The Solution:** CourtCommand replaces manual chaos with **professional-grade tournament management**, ensuring that every match—regardless of level—benefits from structured data collection, real-time visibility, and intelligent analysis.
 
 ---
 
-# ✨ Key Features
+## ✨ Key Features
 
-## 1. Admin Dashboard
-
+### 🏆 1. Admin Dashboard
 A centralized administrative interface designed for tournament organizers.
+* **Team & Roster Management:** Easily register teams and manage players.
+* **Automated Fixtures:** Generate tournament schedules effortlessly.
+* **Match Tracking:** Oversee ongoing matches and track results.
 
-Features include:
-
-* Team registration and management
-* Automated fixture generation
-* Tournament scheduling
-* Match tracking and result management
-
-This dashboard serves as the **core control center** for the entire tournament system.
-
----
-
-## 2. Scorer Interface
-
+### ⏱️ 2. Scorer Interface
 A **courtside digital control panel** designed for scorers during live matches.
+* **Live Point Logging:** Record 2-pointers, 3-pointers, and free throws.
+* **Foul & Violation Tracking:** Maintain accurate discipline records.
+* **Minutes Played Tracking:** Track exact time spent on the court.
 
-Capabilities:
+### 📡 3. Live GameCast (Public Portal)
+A **fan-facing live portal** powered by **WebSockets (Socket.io)** for zero-delay updates.
+* **Live Scoreboard:** Real-time scores and game clock.
+* **Play-by-Play Feed:** Dynamic event tracking (e.g., *SPLASH! 💦 Player hits a huge 3-pointer!*).
+* **Live Player Stats:** Check minutes played, points, and fouls live.
 
-* Log points scored in real-time
-* Record fouls and violations
-* Track timeouts
-* Maintain accurate match statistics
-
-This replaces traditional paper score sheets with a **fast, error-resistant digital scoring system**.
-
----
-
-## 3. Live GameCast (Public Portal)
-
-A **fan-facing live portal** where spectators can follow the match in real time.
-
-Features:
-
-* Live scoreboard updates
-* Play-by-play event tracking
-* Real-time match progress
-
-Updates are powered using **WebSockets via Socket.io**, ensuring minimal delay between scoring events and public display.
+### 🤖 4. Virtual Assistant Coach (AI Module)
+An intelligent analytics module built in Python to provide **strategic insights**.
+* **Player Performance Evaluation:** Grade players on their stats.
+* **Predictive Projections:** Forecast future points based on career averages.
+* **Actionable Suggestions:** Automated training recommendations for improvement.
 
 ---
 
-## 4. Virtual Assistant Coach (AI Module)
+## 🛠️ Tech Stack
 
-An intelligent analytics module designed to provide **strategic insights from match data**.
-
-The AI system analyzes collected statistics to generate:
-
-* Player performance evaluation
-* Tactical insights
-* Suggested lineup improvements
-* Automated training recommendations
-
-The module leverages **machine learning algorithms** to transform raw match data into actionable insights.
+| Domain | Technologies |
+|---|---|
+| **Frontend** | HTML5, CSS3, Vanilla JS, EJS (Embedded JavaScript) |
+| **Backend** | Node.js, Express.js |
+| **Real-Time** | Socket.io |
+| **Database** | MySQL (via `mysql2/promise`) |
+| **AI / ML Service** | Python, Flask, Pandas, Scikit-Learn |
 
 ---
 
-# 🛠️ Tech Stack
+## 📂 Project Structure
 
-## Frontend
+CourtCommand follows a **Separated Monorepo Architecture**, keeping the web app and AI service independent but communicative via REST APIs.
 
-* EJS (Embedded JavaScript Templates)
-* HTML5
-* CSS3
-* Vanilla JavaScript
-
-## Backend
-
-* Node.js
-* Express.js
-
-## Real-Time Communication
-
-* Socket.io
-
-## Database
-
-* MySQL
-* Accessed using `mysql2/promise`
-
-## AI & Analytics Service
-
-* Python
-* Flask
-* Pandas
-* Scikit-Learn
-
----
-
-# 📂 Project Structure
-
-The repository follows a **Separated Monorepo Architecture**, which keeps the web application and AI service independent while allowing them to communicate via APIs.
-
-```
+```text
 CourtCommand/
-│
 ├── backend/                  # Node.js & Express server
-│   ├── public/               # Static assets (CSS, client-side JS, images)
+│   ├── public/               # Static assets (CSS, JS, images)
 │   ├── src/                  # Backend logic (routes, database connection)
 │   └── views/                # EJS templates
-│
 ├── database/                 # SQL schema and seed data
-│
-└── ml_service/               # Python AI/ML microservice
+└── ml_service/               # Python AI/ML microservice (Flask)
 ```
-
-This structure ensures:
-
-* Modular development
-* Easier debugging
-* Independent deployment of services
 
 ---
 
-# 🚀 Local Setup & Installation
+## 🚀 Local Setup & Installation
 
-## Prerequisites
-
-Ensure the following software is installed:
-
-* Node.js (v16 or later)
-* Python (v3.8 or later)
+### Prerequisites
+* Node.js (v16+)
+* Python (v3.8+)
 * MySQL server (XAMPP or standalone)
 
----
+### 1️⃣ Database Setup
+1. Open your MySQL client and create a new database: `court_command`
+2. Run the SQL script located in `database/schema.sql` (or equivalent setup script) to generate the required tables.
 
-# 1️⃣ Database Setup
-
-1. Open your MySQL client
-   (e.g., phpMyAdmin, MySQL Workbench).
-
-2. Create a new database:
-
-```
-court_command
-```
-
-3. Run the SQL script located in:
-
-```
-database/schema.sql
-```
-
-This will create all required tables for the system.
-
----
-
-# 2️⃣ Backend Setup (Node.js)
-
-Open a terminal and navigate to the backend directory.
-
-```
+### 2️⃣ Backend Setup (Node.js)
+```bash
 cd backend
-```
-
-Install required dependencies:
-
-```
 npm install
 ```
-
-Create a `.env` file in the **backend directory** and add your database credentials.
-
-Example:
-
-```
+Create a `.env` file in the `backend/` directory:
+```env
 DB_HOST=localhost
 DB_USER=root
 DB_PASS=
 DB_NAME=court_command
+PORT=3000
 ```
-
-Start the development server:
-
-```
+Start the server:
+```bash
 npm start
 ```
+*The app will run at: `http://localhost:3000`*
 
-The main web application will run at:
-
-```
-http://localhost:3000
-```
-
----
-
-# 3️⃣ AI Service Setup (Python)
-
-Open a **new terminal window** and navigate to the ML service directory.
-
-```
+### 3️⃣ AI Service Setup (Python)
+First of all unzip the `player_analyzer.zip` file and place the player_analyzer folder in the ml_service folder.
+Open a new terminal and navigate to the ML directory:
+```bash
 cd ml_service
+cd court_command_ML
 ```
+**Create & Activate Virtual Environment:**
+* **Windows:** `python -m venv venv` ➔ `venv\Scripts\activate`
+* **Mac/Linux:** `python3 -m venv venv` ➔ `source venv/bin/activate`
 
-## Create a Virtual Environment
-
-### Windows
-
-```
-python -m venv venv
-venv\Scripts\activate
-```
-
-### Mac/Linux
-
-```
-python3 -m venv venv
-source venv/bin/activate
-```
-
----
-
-## Install Dependencies
-
-```
+**Install Dependencies & Run:**
+```bash
 pip install -r requirements.txt
-```
-
----
-
-## Run the AI Service
-
-```
 python app.py
 ```
-
-The AI microservice will run at:
-
-```
-http://localhost:5000
-```
-
-The Node.js backend communicates with this service via API requests.
+*The AI microservice will run at: `http://localhost:5000`*
 
 ---
 
-# 🤝 Team Workflow (Git Guidelines)
-
-To maintain a clean and collaborative workflow, follow these Git rules:
-
-### 1. Do Not Commit Directly to `main`
-
-All development should occur in feature branches.
-
-### 2. Create Feature Branches
-
-```
-git checkout -b feature/your-feature-name
-```
-
-Example:
-
-```
-feature/admin-dashboard
-```
+## 📈 Future Improvements
+* 📱 **Mobile app integration**
+* 📊 **Advanced player analytics dashboards**
+* 🏆 **Tournament bracket automation**
+* 🏥 **AI-based injury risk prediction**
+* 🏅 **Multi-sport support beyond basketball**
 
 ---
 
-### 3. Use `.gitignore`
+**Project Developers**
 
-Ensure the following are ignored:
+<table>
+  <tr>
+    <td align="center"><a href="https://github.com/Astic-x"><img src="https://github.com/Astic-x.png" width="100px;" alt=""/><br /><sub><b>Ankush Malik</b></sub></a></td>
+    <td align="center"><a href="https://github.com/vishalsingh21xyz"><img src="https://github.com/vishalsingh21xyz.png" width="100px;" alt=""/><br /><sub><b>Vishal Vijay Singh</b></sub></a></td>
+    <td align="center"><a href="https://github.com/SIDHARTH-PUNDIR"><img src="https://github.com/SIDHARTH-PUNDIR.png" width="100px;" alt=""/><br /><sub><b>Sidharth Pundir</b></sub></a></td>
+    <td align="center"><a href="https://github.com/akshatbansal13"><img src="https://github.com/akshatbansal13.png" width="100px;" alt=""/><br /><sub><b>Akshat Bansal</b></sub></a></td>
+  </tr>
+</table>
 
-```
-node_modules/
-venv/
-.env
-```
-
-This prevents unnecessary files from being uploaded to the repository.
-
----
-
-### 4. Pull Before Creating a Pull Request
-
-Before submitting a pull request:
-
-```
-git pull origin main
-```
-
-This ensures your branch is up to date and prevents merge conflicts.
-
----
-
-# 📈 Future Improvements
-
-Possible enhancements for the system include:
-
-* Mobile app integration
-* Advanced player analytics dashboards
-* Tournament bracket automation
-* AI-based injury risk prediction
-* Multi-sport support beyond basketball
-
----
-
-# 📜 License
-
-This project is developed for **academic and research purposes**.
-Usage and distribution should follow the guidelines provided by the development team.
-
----
-
-# 📬 Contact
-
-For queries, contributions, or collaboration:
-
-**Charlie Squad Development Team**
-
-* Ankush Malik
-* Vishal Vijay Singh
-* Sidharth Pundir
-* Akshat Bansal
-
----
+<p align="center">
+  <br>
+  <i>Developed for academic and research purposes.</i>
+</p>
