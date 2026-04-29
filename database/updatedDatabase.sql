@@ -38,7 +38,7 @@ CREATE TABLE `game_events` (
   KEY `player_id` (`player_id`),
   CONSTRAINT `game_events_ibfk_1` FOREIGN KEY (`match_id`) REFERENCES `tournament_matches` (`id`) ON DELETE CASCADE,
   CONSTRAINT `game_events_ibfk_2` FOREIGN KEY (`player_id`) REFERENCES `players` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=46 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -47,7 +47,7 @@ CREATE TABLE `game_events` (
 
 LOCK TABLES `game_events` WRITE;
 /*!40000 ALTER TABLE `game_events` DISABLE KEYS */;
-INSERT INTO `game_events` VALUES (1,9,'SEC',17,'2PT_MAKE','11:45',1,'2026-03-22 06:44:20'),(2,9,'sasd',28,'FOUL','11:30',1,'2026-03-22 06:44:20'),(28,224,'sasd',NULL,'REBOUND','09:39',1,'2026-04-26 17:24:23'),(29,224,'sasd',NULL,'2PT_MAKE','09:33',1,'2026-04-26 17:24:29');
+INSERT INTO `game_events` VALUES (1,9,'SEC',17,'2PT_MAKE','11:45',1,'2026-03-22 06:44:20'),(2,9,'sasd',28,'FOUL','11:30',1,'2026-03-22 06:44:20'),(28,224,'sasd',NULL,'REBOUND','09:39',1,'2026-04-26 17:24:23'),(29,224,'sasd',NULL,'2PT_MAKE','09:33',1,'2026-04-26 17:24:29'),(30,224,'sasd',NULL,'2PT_MAKE','10:00',1,'2026-04-28 06:50:23'),(31,224,'sasd',NULL,'2PT_MAKE','10:00',1,'2026-04-29 13:38:57'),(32,224,'Test Squad',NULL,'2PT_MAKE','10:00',1,'2026-04-29 13:39:03'),(33,224,'sasd',NULL,'2PT_MAKE','09:43',1,'2026-04-29 13:39:36'),(34,224,'sasd',NULL,'2PT_MAKE','09:33',1,'2026-04-29 13:39:46'),(35,224,'sasd',NULL,'BLOCK','09:21',1,'2026-04-29 13:39:58'),(36,224,'Test Squad',NULL,'2PT_MAKE','09:08',1,'2026-04-29 13:40:11'),(37,224,'Test Squad',NULL,'2PT_MAKE','08:59',1,'2026-04-29 13:40:20'),(38,224,'Test Squad',NULL,'2PT_MAKE','08:46',1,'2026-04-29 13:40:34'),(39,224,'Test Squad',NULL,'REBOUND','08:44',1,'2026-04-29 13:40:35'),(40,224,'sasd',NULL,'2PT_MAKE','09:48',1,'2026-04-29 13:46:51'),(41,224,'sasd',NULL,'2PT_MAKE','09:43',1,'2026-04-29 13:46:56'),(42,224,'Test Squad',NULL,'2PT_MAKE','09:34',1,'2026-04-29 13:47:05'),(43,224,'Test Squad',NULL,'REBOUND','09:32',1,'2026-04-29 13:47:07'),(44,224,'Test Squad',NULL,'2PT_MAKE','09:20',1,'2026-04-29 13:47:19'),(45,224,'Test Squad',NULL,'BLOCK','09:19',1,'2026-04-29 13:47:20');
 /*!40000 ALTER TABLE `game_events` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -67,6 +67,7 @@ CREATE TABLE `player_match_stats` (
   `rebounds` int DEFAULT '0',
   `steals` int DEFAULT '0',
   `blocks` int DEFAULT '0',
+  `seconds_played` int DEFAULT '0',
   PRIMARY KEY (`match_id`,`player_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -77,6 +78,7 @@ CREATE TABLE `player_match_stats` (
 
 LOCK TABLES `player_match_stats` WRITE;
 /*!40000 ALTER TABLE `player_match_stats` DISABLE KEYS */;
+INSERT INTO `player_match_stats` VALUES (224,27,2,0,0,0,0,0,11),(224,28,3,0,0,0,0,0,15),(224,29,2,0,0,1,0,0,25),(224,30,2,0,0,0,0,0,61),(224,31,2,0,0,0,0,1,35),(901,29,85,0,22,40,0,0,0),(901,32,80,0,19,38,0,0,0),(902,29,72,0,18,35,0,0,0),(902,32,90,0,24,42,0,0,0),(903,29,95,0,26,45,0,0,0),(903,32,88,0,20,39,0,0,0),(904,29,105,0,30,42,0,0,0),(904,34,98,0,25,38,0,0,0),(905,29,88,0,15,30,0,0,0),(905,36,95,0,22,45,0,0,0),(906,29,110,0,28,35,0,0,0),(906,34,112,0,29,36,0,0,0),(907,34,100,0,24,40,0,0,0),(907,36,90,0,18,32,0,0,0);
 /*!40000 ALTER TABLE `player_match_stats` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -95,7 +97,7 @@ CREATE TABLE `players` (
   `image` text,
   `position` varchar(50) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=38 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -104,7 +106,7 @@ CREATE TABLE `players` (
 
 LOCK TABLES `players` WRITE;
 /*!40000 ALTER TABLE `players` DISABLE KEYS */;
-INSERT INTO `players` VALUES (17,'Sidharth','Player','SEC','/assets/players/1773854944371-player5.jpeg','PG'),(18,'PUNDIR','Player','SEC','/assets/players/player2.jpeg','SG'),(27,'PUNDIR','Player','sasd','/assets/players/couch.jpeg','PG'),(28,'akshat','Player','sasd','/assets/players/1773854881025-player3.avif','SG'),(29,'Helmond','Player','Test Squad','/assets/players/1774164414334-inosuke-hashibira-5120x2880-23650.jpg.jpeg','PG');
+INSERT INTO `players` VALUES (17,'Sidharth','Player','SEC','/assets/players/1773854944371-player5.jpeg','PG'),(18,'PUNDIR','Player','SEC','/assets/players/player2.jpeg','SG'),(27,'PUNDIR','Player','sasd','/assets/players/couch.jpeg','PG'),(28,'akshat','Player','sasd','/assets/players/1773854881025-player3.avif','SG'),(29,'Helmond','Player','Test Squad','/assets/players/1774164414334-inosuke-hashibira-5120x2880-23650.jpg.jpeg','PG'),(30,'Liam Chen','Captain','test squad',NULL,'PG'),(31,'Marcus Miller','Player','test squad',NULL,'PF'),(32,'John Doe','Captain','Rival Squad',NULL,'PG'),(33,'Jane Smith','Player','Rival Squad',NULL,'C'),(34,'Alex Hunter','Captain','Alpha Wolves',NULL,'PG'),(35,'Zack Ryder','Player','Alpha Wolves',NULL,'C'),(36,'Leon Vance','Captain','Neon Knights',NULL,'SG'),(37,'Trey Evans','Player','Neon Knights',NULL,'PF');
 /*!40000 ALTER TABLE `players` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -129,7 +131,7 @@ CREATE TABLE `tournament_matches` (
   PRIMARY KEY (`id`),
   KEY `tournament_id` (`tournament_id`),
   CONSTRAINT `tournament_matches_ibfk_1` FOREIGN KEY (`tournament_id`) REFERENCES `tournaments` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=229 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=908 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -138,7 +140,7 @@ CREATE TABLE `tournament_matches` (
 
 LOCK TABLES `tournament_matches` WRITE;
 /*!40000 ALTER TABLE `tournament_matches` DISABLE KEYS */;
-INSERT INTO `tournament_matches` VALUES (8,5,'ank','vis',0,0,'UPCOMING',NULL,'SEMI FINAL',NULL),(9,5,'SEC','sasd',42,50,'LIVE',NULL,'SEMI FINAL',NULL),(222,7,'Test squad 1','BYE',0,0,'UPCOMING',NULL,'ROUND 1',NULL),(223,7,'ank','vis',0,0,'UPCOMING',NULL,'ROUND 1',NULL),(224,7,'sasd','Test Squad',6,0,'LIVE','2026-04-26','ROUND 1',NULL),(225,7,'SEC','BYE',0,0,'UPCOMING',NULL,'ROUND 1',NULL),(226,7,'Test squad 1','TBD',0,0,'UPCOMING',NULL,'SEMI FINAL',NULL),(227,7,'TBD','TBD',0,0,'UPCOMING',NULL,'SEMI FINAL',NULL),(228,7,'TBD','TBD',0,0,'UPCOMING',NULL,'FINAL',NULL);
+INSERT INTO `tournament_matches` VALUES (8,5,'ank','vis',0,0,'UPCOMING',NULL,'SEMI FINAL',NULL),(9,5,'SEC','sasd',42,50,'LIVE',NULL,'SEMI FINAL',NULL),(222,7,'Test squad 1','BYE',0,0,'UPCOMING',NULL,'ROUND 1',NULL),(223,7,'ank','vis',0,0,'UPCOMING',NULL,'ROUND 1',NULL),(224,7,'sasd','Test Squad',5,4,'LIVE','2026-04-26','ROUND 1',NULL),(225,7,'SEC','BYE',0,0,'UPCOMING',NULL,'ROUND 1',NULL),(226,7,'Test squad 1','TBD',0,0,'UPCOMING',NULL,'SEMI FINAL',NULL),(227,7,'TBD','TBD',0,0,'UPCOMING',NULL,'SEMI FINAL',NULL),(228,7,'TBD','TBD',0,0,'UPCOMING',NULL,'FINAL',NULL),(901,999,'test squad','Rival Squad',85,80,'FINAL','2026-04-10',NULL,'test squad'),(902,999,'test squad','Rival Squad',72,90,'FINAL','2026-04-12',NULL,'Rival Squad'),(903,999,'test squad','Rival Squad',95,88,'FINAL','2026-04-15',NULL,'test squad'),(904,1001,'test squad','Alpha Wolves',105,98,'FINAL','2026-06-05',NULL,'test squad'),(905,1001,'test squad','Neon Knights',88,95,'FINAL','2026-06-10',NULL,'Neon Knights'),(906,1002,'test squad','Alpha Wolves',110,112,'FINAL','2026-12-05',NULL,'Alpha Wolves'),(907,1002,'Alpha Wolves','Neon Knights',100,90,'FINAL','2026-12-10',NULL,'Alpha Wolves');
 /*!40000 ALTER TABLE `tournament_matches` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -198,7 +200,7 @@ CREATE TABLE `tournaments` (
   PRIMARY KEY (`id`),
   KEY `created_by` (`created_by`),
   CONSTRAINT `tournaments_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1003 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -207,7 +209,7 @@ CREATE TABLE `tournaments` (
 
 LOCK TABLES `tournaments` WRITE;
 /*!40000 ALTER TABLE `tournaments` DISABLE KEYS */;
-INSERT INTO `tournaments` VALUES (1,'Spring Cup','Graphic Era Hill, Bheem Tal','2026-03-01','2026-03-31',8,'ONGOING','/assets/tournaments/spring.png',NULL,NULL,NULL,NULL),(2,'Summer League','Graphic Era Hill, Haldwani','2026-06-01','2026-06-30',8,'UPCOMING','/assets/tournaments/summer.png',NULL,NULL,NULL,NULL),(5,'akshat','dehradun','2026-03-03','2026-04-14',8,'UPCOMING','/assets/tournaments/1773926483213-photo-1646625753091-de94be5cfc32.avif',5,NULL,NULL,NULL),(7,'Spring Days','Dehradun','2026-03-22','2026-03-31',32,'ACTIVE','/assets/tournaments/1774188430972-NewReadmeBanner.png',10,NULL,NULL,NULL);
+INSERT INTO `tournaments` VALUES (1,'Spring Cup','Graphic Era Hill, Bheem Tal','2026-03-01','2026-03-31',8,'ONGOING','/assets/tournaments/spring.png',NULL,NULL,NULL,NULL),(2,'Summer League','Graphic Era Hill, Haldwani','2026-06-01','2026-06-30',8,'UPCOMING','/assets/tournaments/summer.png',NULL,NULL,NULL,NULL),(5,'akshat','dehradun','2026-03-03','2026-04-14',8,'UPCOMING','/assets/tournaments/1773926483213-photo-1646625753091-de94be5cfc32.avif',5,NULL,NULL,NULL),(7,'Spring Days','Dehradun','2026-03-22','2026-03-31',32,'ACTIVE','/assets/tournaments/1774188430972-NewReadmeBanner.png',10,NULL,NULL,NULL),(999,'AI Simulator Cup','Test Arena','2026-04-01',NULL,8,'UPCOMING',NULL,NULL,NULL,NULL,NULL),(1001,'Summer Clash','Downtown Court','2026-06-01',NULL,8,'UPCOMING',NULL,NULL,NULL,NULL,NULL),(1002,'Winter Showdown','City Arena','2026-12-01',NULL,8,'UPCOMING',NULL,NULL,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `tournaments` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -249,4 +251,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-04-26 23:28:13
+-- Dump completed on 2026-04-29 19:41:43
