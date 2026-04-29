@@ -174,7 +174,9 @@ app.get("/team-dashboard", async (req, res) => {
     const [playerStatsRows] = await pool.query(
       `SELECT p.id AS player_id, COALESCE(SUM(pms.points), 0) AS points, COALESCE(SUM(pms.assists), 0) AS assists,
        COALESCE(SUM(pms.rebounds), 0) AS rebounds, COALESCE(SUM(pms.steals), 0) AS steals, 
-       COALESCE(SUM(pms.blocks), 0) AS blocks, COALESCE(SUM(pms.fouls), 0) AS fouls
+       COALESCE(SUM(pms.blocks), 0) AS blocks, COALESCE(SUM(pms.fouls), 0) AS fouls,
+       COALESCE(SUM(pms.seconds_played), 0) AS seconds_played,
+       COUNT(DISTINCT pms.match_id) AS matches_played
        FROM players p LEFT JOIN player_match_stats pms ON p.id = pms.player_id
        WHERE LOWER(p.team) = LOWER(?) GROUP BY p.id`, [req.user.team]
     );
@@ -188,6 +190,8 @@ app.get("/team-dashboard", async (req, res) => {
       steals: statsMap.get(p.id)?.steals ?? 0,
       blocks: statsMap.get(p.id)?.blocks ?? 0,
       fouls: statsMap.get(p.id)?.fouls ?? 0,
+      seconds_played: statsMap.get(p.id)?.seconds_played ?? 0,
+      matches_played: statsMap.get(p.id)?.matches_played ?? 0,
     }));
 
     res.render("pages/team-dashboard", { user: req.user, players: enrichedPlayers, tournaments, registered, teamStats });
@@ -357,6 +361,53 @@ app.post("/api/ask-ai", async (req, res) => {
   }
 });
 
+app.get("/api/player-scout/:id", async (req, res) => {
+  if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+  
+  try {
+    const playerId = req.params.id;
+    
+    // Query the database to get the career averages for this specific player
+    const [statsRows] = await pool.query(
+      `SELECT AVG(points) as avg_pts, AVG(assists) as avg_ast, AVG(rebounds) as avg_reb, AVG(seconds_played) as avg_sec 
+       FROM player_match_stats WHERE player_id = ?`, 
+      [playerId]
+    );
+    
+    const stats = statsRows[0];
+    const pts = stats && stats.avg_pts != null ? parseFloat(stats.avg_pts) : 0;
+    const ast = stats && stats.avg_ast != null ? parseFloat(stats.avg_ast) : 0;
+    const reb = stats && stats.avg_reb != null ? parseFloat(stats.avg_reb) : 0;
+    
+    // Calculate actual minutes played
+    const avgSec = stats && stats.avg_sec != null ? parseFloat(stats.avg_sec) : 0;
+    const actualMinutes = (avgSec / 60).toFixed(1);
+    
+    // Approximate FG%
+    const fg_pct = Math.min(0.60, Math.max(0.35, 0.45 * (1 + ((pts - 15) / 150))));
+    
+    const payload = {
+      PTS: pts,
+      AST: ast,
+      REB: reb,
+      FG_PCT: fg_pct,
+      MIN: parseFloat(actualMinutes) > 0 ? parseFloat(actualMinutes) : 24
+    };
+    
+    // fetch from python service
+    const mlResponse = await fetch("http://127.0.0.1:5000/api/analyze-player", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    
+    const data = await mlResponse.json();
+    res.json(data);
+  } catch (err) {
+    console.error("PLAYER SCOUT ERROR:", err);
+    res.status(500).json({ error: "AI Engine Offline or Error" });
+  }
+});
 app.post("/assign-position", async (req, res) => {
   if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
   const { playerId, position } = req.body;
@@ -1438,6 +1489,10 @@ io.on("connection", (socket) => {
     io.emit(`clock_${matchId}`, { time, quarter, running });
   });
 
+  socket.on("update_live_minutes", (data) => {
+    io.emit('update_live_minutes', data);
+  });
+
   // ── 4. PLAYER STATS ───────────────────────────────────────────────────────
   // Emitter payload: { matchId, playerId, points, fouls, assists, rebounds, steals, blocks }
   // NOTE: 'player_match_stats' table does not exist in the current schema.
@@ -1454,7 +1509,7 @@ io.on("connection", (socket) => {
   //   );
   // Then uncomment the pool.query block below.
   socket.on("update_player_stats", async (data) => {
-    const { matchId, playerId, points, fouls, assists, rebounds } = data;
+    const { matchId, playerId, points, fouls, assists, rebounds, steals, blocks, seconds_played } = data;
     console.log(`[Socket] update_player_stats received → match:${matchId} player:${playerId} pts:${points} fls:${fouls} ast:${assists} reb:${rebounds}`);
 
     // Feature 5: Lock stats if match is already FINAL
@@ -1470,6 +1525,21 @@ io.on("connection", (socket) => {
     } catch (err) {
       console.error("[Socket] update_player_stats status check ERROR:", err.message);
       return; // Fail safe — block on DB error too
+    }
+
+    // Save stats to DB
+    try {
+      const sp = seconds_played || 0;
+      await pool.query(`
+        INSERT INTO player_match_stats (match_id, player_id, points, fouls, assists, rebounds, steals, blocks, seconds_played) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE 
+          points=VALUES(points), fouls=VALUES(fouls), assists=VALUES(assists), 
+          rebounds=VALUES(rebounds), steals=VALUES(steals), blocks=VALUES(blocks),
+          seconds_played=VALUES(seconds_played)
+      `, [matchId, playerId, points, fouls, assists, rebounds, steals || 0, blocks || 0, sp]);
+    } catch (dbErr) {
+      console.error("[Socket] DB save error:", dbErr.message);
     }
 
     // Broadcast in-game stats to all fan dashboards immediately
