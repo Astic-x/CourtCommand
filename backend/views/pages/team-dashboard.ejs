@@ -327,7 +327,7 @@
 
                       <%# Task 3: Mini box-score row — aggregated career totals from player_match_stats %>
                         <div
-                          style="display:grid; grid-template-columns: repeat(6,1fr); gap:4px; margin-top:10px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.07); text-align:center;">
+                          style="display:grid; grid-template-columns: repeat(5,1fr); gap:4px; margin-top:10px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.07); text-align:center;">
                           <div style="font-size:10px; color:#a0a5b8;">PTS<br><span
                               style="font-size:14px; font-weight:700; color:#ff7a18;">
                               <%= player.points %>
@@ -348,12 +348,7 @@
                               style="font-size:14px; font-weight:700; color:#ffffff;">
                               <%= player.blocks %>
                             </span></div>
-                          <div style="font-size:10px; color:#a0a5b8;">MIN<br><span
-                              style="font-size:14px; font-weight:700; color:#14b8a6;">
-                              <%= player.matches_played > 0 ? Math.floor((player.seconds_played || 0) / player.matches_played / 60) : 0 %>
-                            </span></div>
                         </div>
-                        <button onclick="scoutPlayer('<%= player.id %>', '<%= player.name %>')" style="margin-top: 15px; width: 100%; background: rgba(168, 85, 247, 0.2); border: 1px solid #a855f7; color: #c084fc; padding: 8px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 12px; font-weight: bold;">🤖 Generate AI Scouting Report</button>
                     </div>
                     <% }) %>
             </div>
@@ -484,71 +479,7 @@
 
       document.getElementById('playerModal').classList.add('active');
     }
-
-    // AI Player Scouting Logic
-    async function scoutPlayer(playerId, playerName) {
-      const modal = document.getElementById('scoutModal');
-      const loadingDiv = document.getElementById('scoutLoading');
-      const dataDiv = document.getElementById('scoutData');
-      
-      modal.classList.add('active');
-      loadingDiv.style.display = 'block';
-      dataDiv.style.display = 'none';
-      document.getElementById('scoutName').innerText = playerName;
-
-      try {
-        const response = await fetch(`/api/player-scout/${playerId}`);
-        const data = await response.json();
-        
-        if (data.error) throw new Error(data.error);
-
-        document.getElementById('scoutLevel').innerText = data.level;
-        document.getElementById('scoutProjected').innerText = data.projected;
-        document.getElementById('scoutStrength').innerText = data.strength;
-        document.getElementById('scoutWeakness').innerText = data.weakness;
-        document.getElementById('scoutSuggestion').innerText = data.suggestion;
-        
-        loadingDiv.style.display = 'none';
-        dataDiv.style.display = 'block';
-      } catch (err) {
-        console.error(err);
-        alert("Failed to load scouting report. Please ensure the AI Engine is running.");
-        modal.classList.remove('active');
-      }
-    }
   </script>
-
-  <div class="modal-overlay" id="scoutModal">
-    <div class="modal-content">
-      <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
-        <h3 style="margin: 0;">🤖 AI Scouting Report</h3>
-        <button onclick="document.getElementById('scoutModal').classList.remove('active')"
-          style="background: none; border: none; color: #a0a5b8; cursor: pointer; font-size: 20px;">&times;</button>
-      </div>
-      <div id="scoutLoading" style="text-align: center; color: #a0a5b8; margin: 20px 0;">
-        <p>Analyzing player data...</p>
-      </div>
-      <div id="scoutData" style="display: none;">
-        <h4 id="scoutName" style="color: #fff; margin-bottom: 5px;">--</h4>
-        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-          <span style="background: rgba(168, 85, 247, 0.2); color: #c084fc; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;" id="scoutLevel">-- TIER</span>
-          <span style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Projected PTS: <span id="scoutProjected">--</span></span>
-        </div>
-        <div style="margin-bottom: 10px;">
-          <span style="font-size: 11px; color: #a0a5b8; text-transform: uppercase;">Top Strength</span>
-          <p id="scoutStrength" style="color: #fff; margin: 2px 0 0 0; font-size: 14px;">--</p>
-        </div>
-        <div style="margin-bottom: 10px;">
-          <span style="font-size: 11px; color: #a0a5b8; text-transform: uppercase;">Area to Improve</span>
-          <p id="scoutWeakness" style="color: #fff; margin: 2px 0 0 0; font-size: 14px;">--</p>
-        </div>
-        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
-          <span style="font-size: 11px; color: #a0a5b8; text-transform: uppercase;">AI Suggestion</span>
-          <p id="scoutSuggestion" style="color: #ff7a18; margin: 5px 0 0 0; font-size: 14px; font-style: italic;">--</p>
-        </div>
-      </div>
-    </div>
-  </div>
 
 </body>
 
