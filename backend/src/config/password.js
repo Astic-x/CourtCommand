@@ -9,7 +9,7 @@ export default function configurePassport() {
       { usernameField: "email" },
       async (email, password, cb) => {
         try {
-          // MySQL uses ? instead of $1
+         
           const [rows] = await pool.query("SELECT * FROM users WHERE email=?", [email]);
 
           if (rows.length === 0) return cb(null, false, { message: "User not found." });
